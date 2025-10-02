@@ -18,7 +18,7 @@
         >
           <div
             @click.stop
-            class="py-3 px-6 rounded-lg bg-slate-50 max-w-full flex flex-col shadow-lg gap-10 max-h-screen overflow-y-auto"
+            class="py-3 px-6 rounded-lg bg-slate-50 max-w-full flex flex-col shadow-lg gap-10 max-h-full overflow-y-auto"
           >
             <div>
               <div class="px-3 text-lg font-semibold flex-shrink-0 text-center">
