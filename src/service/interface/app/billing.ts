@@ -1,6 +1,7 @@
-import type { IBankAccount } from '@/utils/api/N4Service/Partner'
-import type { ChatbotUserInfo } from './chatbot_user'
 import type { IPage, PageInfo } from './page'
+
+import type { ChatbotUserInfo } from './chatbot_user'
+import type { IBankAccount } from '@/utils/api/N4Service/Partner'
 
 /**tổ chức */
 export interface OrgInfo {
@@ -149,7 +150,7 @@ export interface MemberShipInfo {
 }
 
 /**gói của tổ chức */
-export type OrgPackage = 'FREE' | 'TRIAL' | 'PRO' | 'BUSINESS'
+export type OrgPackage = 'FREE' | 'TRIAL' | 'LITE' | 'PRO' | 'BUSINESS'
 
 /**bảng tạm liên kết giữa tổ chức và trang */
 export interface OwnerShipInfo {
@@ -244,6 +245,8 @@ export interface TransactionInfo {
   txn_voucher_id?: string
   /**snap lại dữ liệu của mã khuyến mại tại thời điểm tạo */
   txn_voucher_info?: IVoucher
+  /** phiên bản sử dụng */
+  version?: string
 }
 /**dữ liệu đính kèm nếu mã theo phạm vi nhân viên */
 export interface IStaffInfo {
@@ -382,4 +385,43 @@ export interface QrCodeInput {
   amount: number
   /**nội dung chuyển khoản */
   message: string
+  /** phiên bản   */
+  version?: string
+  /** mã giao dịch txn_id */
+  txn_id?: string
+}
+
+/**loại quota của AI cơ bản */
+export type QuotaAiBaseType = 'AI_TEXT'
+
+/**loại quota của AI media */
+export type QuotaAIMediaType = 'AI_IMAGE' | 'AI_SOUND' | 'AI_VIDEO'
+
+/**loại quota của AI */
+export type QuotaAiType = QuotaAiBaseType | QuotaAIMediaType
+
+/**loại quota của chatbot */
+export type QuotaChatbotType = 'FAU'
+
+/**loại quota hệ thống */
+export type QuotaSystemType = 'PAGE' | 'STAFF' | 'CLIENT'
+
+/**loại quota */
+export type QuotaType =
+  | QuotaSystemType
+  | QuotaChatbotType
+  | QuotaAiBaseType
+  | QuotaAIMediaType
+
+/**các thông tin bổ sung của giao dịch */
+export interface ITxnMeta {
+  /**loại giao dịch */
+  type?:
+    | 'PURCHASE' // mua gói
+    | 'INCREASE' // mua thêm
+    | 'TOP_UP_WALLET' // chỉ nạp tiền vào ví
+  /**loại sản phẩm */
+  product?: OrgPackage | QuotaType
+  /**số lượng */
+  quantity?: number
 }

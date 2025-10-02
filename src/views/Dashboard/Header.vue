@@ -1,6 +1,6 @@
 <template>
   <div
-    class="dashboard-header bg-white rounded-lg py-3 px-6 flex justify-between"
+    class="dashboard-header bg-white rounded-lg py-3 px-3 md:px-6 flex justify-between"
   >
     <button
       @click="$router.push('/dashboard/select-page')"
@@ -11,7 +11,7 @@
         class="h-8"
       />
     </button>
-    <div class="flex gap-7 items-center">
+    <div class="flex gap-3 md:gap-7 items-center">
       <slot name="right" />
       <User
         position="BOTTOM"
@@ -34,23 +34,22 @@
       position="BOTTOM"
       class_content="flex flex-col gap-1 max-h-[calc(100vh-100px)]"
     >
-      <OrgSetting @close="attach_ref?.toggleDropdown"/>
+      <OrgSetting @close="attach_ref?.toggleDropdown" />
     </Dropdown>
   </div>
 </template>
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref } from 'vue'
 import { useCommonStore } from '@/stores'
 
 import User from '@/components/User.vue'
 
-import { Squares2X2Icon } from '@heroicons/vue/24/solid';
-import Dropdown from '@/components/Dropdown.vue';
-import OrgSetting from '@/components/Main/OrgSetting.vue';
+import { Squares2X2Icon } from '@heroicons/vue/24/solid'
+import Dropdown from '@/components/Dropdown.vue'
+import OrgSetting from '@/components/Main/OrgSetting.vue'
 
 const commonStore = useCommonStore()
 
 /**ref của menu đính kèm */
 const attach_ref = ref<InstanceType<typeof Dropdown>>()
-
 </script>

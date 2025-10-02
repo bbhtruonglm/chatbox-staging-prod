@@ -23,19 +23,26 @@
       :title="$t('v1.view.main.dashboard.nav.widget')"
     />
   </template>
+  <template v-if="!orgStore.isAdminOrg()">
+    <MenuItem
+      @click="redirectMenu('widget')"
+      :icon="SquareIcon"
+      :title="$t('v1.view.main.dashboard.nav.widget')"
+    />
+  </template>
 </template>
-  
-<script setup lang='ts'>
-import { useOrgStore } from '@/stores';
-import { useI18n } from 'vue-i18n';
-import { useRouter } from 'vue-router';
 
-import BriefCaseIcon from '@/components/Icons/BriefCase.vue';
-import CheckBadgeIcon from '@/components/Icons/CheckBadge.vue';
-import SquareIcon from '@/components/Icons/Square.vue';
-import UsersIcon from '@/components/Icons/Users.vue';
-import MenuItem from '@/components/Main/Dashboard/MenuItem.vue';
-import MenuTitle from '@/components/Main/Dashboard/MenuTitle.vue';
+<script setup lang="ts">
+import { useOrgStore } from '@/stores'
+import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
+
+import BriefCaseIcon from '@/components/Icons/BriefCase.vue'
+import CheckBadgeIcon from '@/components/Icons/CheckBadge.vue'
+import SquareIcon from '@/components/Icons/Square.vue'
+import UsersIcon from '@/components/Icons/Users.vue'
+import MenuItem from '@/components/Main/Dashboard/MenuItem.vue'
+import MenuTitle from '@/components/Main/Dashboard/MenuTitle.vue'
 
 const { t: $t } = useI18n()
 const $router = useRouter()

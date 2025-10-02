@@ -169,6 +169,10 @@ export const useOrgStore = defineStore('org_store', () => {
   function isTrialPack() {
     return selected_org_info.value?.org_package?.org_package_type === 'TRIAL'
   }
+  /** có phải gói lite không */
+  function isLitePack() {
+    return selected_org_info.value?.org_package?.org_package_type === 'LITE'
+  }
   /**có phải là gói pro không */
   function isProPack() {
     return selected_org_info.value?.org_package?.org_package_type === 'PRO'
@@ -260,6 +264,7 @@ export const useOrgStore = defineStore('org_store', () => {
     findOrg,
     isFreePack,
     isTrialPack,
+    isLitePack,
     isProPack,
     isBusinessPack,
     isAdminOrg,

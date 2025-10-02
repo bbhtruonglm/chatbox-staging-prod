@@ -1,18 +1,18 @@
 <template>
-  <div class="rounded-lg py-3 px-4 bg-white flex gap-3">
-    <div 
+  <div class="rounded-lg py-3 px-2 md:px-4 bg-white flex gap-3">
+    <div
       :class="class_icon"
       class="flex-shrink-0"
     >
       <slot name="icon" />
     </div>
-    <div 
+    <div
       :class="class_content"
       class="flex flex-col gap-3 w-full min-w-0"
     >
       <div
         :class="class_header_content"
-        class="flex justify-between gap-2"
+        class="flex flex-col md:flex-row justify-between gap-2"
       >
         <div
           :class="class_title"

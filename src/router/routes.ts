@@ -1,48 +1,40 @@
-import PageNotFound from '@/views/404.vue'
-
-import DeleteAccount from '@/views/DeleteAccount.vue'
+import AllWidget from '@/views/Dashboard/Widget/AllWidget.vue'
+import ChatShort from '@/views/ChatWarper.vue'
+import Dashboard from '@/views/Dashboard.vue'
 import DeauthorizeInstagram from '@/views/DeauthorizeInstagram.vue'
-
-import OAuthV2 from '@/views/OAuthV2.vue'
+import DeleteAccount from '@/views/DeleteAccount.vue'
+import Download from '@/views/Dashboard/Download.vue'
+import DownloadApp from '@/views/DownloadApp.vue'
+import ForgotPassword from '@/views/OAuth/ForgotPassword.vue'
+import InstagramRedirectUri from '@/views/InstagramRedirectUri.vue'
+import InstalledWidget from '@/views/Dashboard/Widget/InstalledWidget.vue'
 import Login from '@/views/OAuth/Login.vue'
 import LoginEmail from '@/views/OAuth/LoginEmail.vue'
-import Register from '@/views/OAuth/Register.vue'
-import RegisterDetail from '@/views/OAuth/RegisterDetail.vue'
-import ForgotPassword from '@/views/OAuth/ForgotPassword.vue'
-import ResetPassword from '@/views/OAuth/ResetPassword.vue'
-
-import ChatShort from '@/views/ChatWarper.vue'
-
-import Dashboard from '@/views/Dashboard.vue'
-import SelectPage from '@/views/Dashboard/SelectPage.vue'
-import SelectPlatform from '@/views/Dashboard/SelectPlatform.vue'
-import Pricing from '@/views/Dashboard/Pricing.vue'
-
-import Widget from '@/views/Dashboard/Widget.vue'
-import AllWidget from '@/views/Dashboard/Widget/AllWidget.vue'
-import InstalledWidget from '@/views/Dashboard/Widget/InstalledWidget.vue'
 import MyWidget from '@/views/Dashboard/Widget/MyWidget.vue'
-
 import Noti from '@/views/Dashboard/Noti.vue'
-import Download from '@/views/Dashboard/Download.vue'
-import User from '@/views/Dashboard/User.vue'
-
+import OAuthV2 from '@/views/OAuthV2.vue'
+import Onboarding from '@/views/OAuth/Onboarding/Onboarding.vue'
 import Org from '@/views/Dashboard/Org.vue'
-import OrgSetting from '@/views/Dashboard/Org/Setting.vue'
-import OrgApp from '@/views/Dashboard/Org/App.vue'
-import OrgApi from '@/views/Dashboard/Org/Api.vue'
 import OrgAgent from '@/views/Dashboard/Org/Agent.vue'
-import OrgWebhook from '@/views/Dashboard/Org/Webhook.vue'
-
+import OrgApi from '@/views/Dashboard/Org/Api.vue'
+import OrgApp from '@/views/Dashboard/Org/App.vue'
 import OrgPay from '@/views/Dashboard/Org/Pay.vue'
 import OrgPayInfo from '@/views/Dashboard/Org/Pay/Info.vue'
 import OrgPayReCharge from '@/views/Dashboard/Org/Pay/ReCharge.vue'
-
-import Template from '@/views/Template.vue'
-import DownloadApp from '@/views/DownloadApp.vue'
-import TakeControl from '@/views/TakeControl.vue'
+import OrgSetting from '@/views/Dashboard/Org/Setting.vue'
+import OrgWebhook from '@/views/Dashboard/Org/Webhook.vue'
+import PageNotFound from '@/views/404.vue'
 import PostAnalyticIframe from '@/views/PostAnalyticIframe.vue'
-import InstagramRedirectUri from '@/views/InstagramRedirectUri.vue'
+import Pricing from '@/views/Dashboard/Pricing.vue'
+import Register from '@/views/OAuth/Register.vue'
+import RegisterDetail from '@/views/OAuth/RegisterDetail.vue'
+import ResetPassword from '@/views/OAuth/ResetPassword.vue'
+import SelectPage from '@/views/Dashboard/SelectPage.vue'
+import SelectPlatform from '@/views/Dashboard/SelectPlatform.vue'
+import TakeControl from '@/views/TakeControl.vue'
+import Template from '@/views/Template.vue'
+import User from '@/views/Dashboard/User.vue'
+import Widget from '@/views/Dashboard/Widget.vue'
 import ZaloPeronalCore from '@/views/ZaloPeronalCore.vue'
 
 export const routes = [
@@ -62,6 +54,8 @@ export const routes = [
       { path: 'reset-password', component: ResetPassword },
     ],
   },
+  { path: '/onboarding', component: Onboarding },
+
   {
     path: '/logout',
     redirect: '/oauth',

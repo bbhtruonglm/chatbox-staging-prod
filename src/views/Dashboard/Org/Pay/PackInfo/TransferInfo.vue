@@ -1,10 +1,9 @@
 <template>
   <div
-    class="rounded-lg w-[674px] border border-slate-300 grid grid-cols-2 overflow-hidden text-sm"
+    class="rounded-lg p-3 bg-slate-100 border border-slate-300 grid grid-cols-2 overflow-hidden text-sm gap-2.5"
+    :class="[is_modal ? 'min-w-[674px] w-full' : 'w-[720px]']"
   >
-    <div
-      class="bg-slate-200 p-5 flex flex-col gap-2.5 border-r border-slate-300"
-    >
+    <div class="bg-slate-100 flex flex-col gap-2.5">
       <div>
         <div class="text-slate-700">
           {{
@@ -19,6 +18,27 @@
           </div>
           <div
             @click="copyToClipboard(String(payment_info?.account))"
+            class="text-blue-700 cursor-copy"
+          >
+            {{ $t('v1.common.copy') }}
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="text-slate-700">
+          {{
+            $t('v1.view.main.dashboard.org.pay.recharge.transfer_info.name')
+          }}:
+        </div>
+        <div class="flex gap-3 items-center">
+          <div
+            class="border border-green-800 bg-green-50 py-2 px-3 rounded-lg font-semibold w-fit"
+          >
+            {{ payment_info?.name }}
+          </div>
+          <div
+            @click="copyToClipboard(payment_info?.name || '')"
             class="text-blue-700 cursor-copy"
           >
             {{ $t('v1.common.copy') }}
@@ -48,18 +68,6 @@
       <div>
         <div class="text-slate-700">
           {{
-            $t('v1.view.main.dashboard.org.pay.recharge.transfer_info.name')
-          }}:
-        </div>
-        <div
-          class="border border-green-800 bg-green-50 py-2 px-3 rounded-lg font-semibold w-fit"
-        >
-          {{ payment_info?.name }}
-        </div>
-      </div>
-      <div>
-        <div class="text-slate-700">
-          {{
             $t('v1.view.main.dashboard.org.pay.recharge.transfer_info.bank')
           }}:
         </div>
@@ -68,7 +76,9 @@
         </div>
       </div>
     </div>
-    <div class="p-5 flex flex-col gap-2.5 items-center">
+    <div
+      class="p-5 bg-white border border-slate-300 flex flex-col gap-2.5 items-center rounded-lg"
+    >
       <div>
         {{ $t('v1.view.main.dashboard.org.pay.recharge.transfer_info.qr') }}
       </div>
@@ -77,10 +87,11 @@
         :consumer_id="payment_info?.account"
         :amount
         :message="txn_id"
+        :wallet_balance="wallet_balance"
       />
     </div>
   </div>
-  <div class="text-slate-700">
+  <div class="text-slate-700 text-sm">
     <div>
       {{ $t('v1.view.main.dashboard.org.pay.recharge.transfer_info.guild_1') }}
     </div>
@@ -96,7 +107,7 @@
     v-if="txn_info?.txn_status === 'PENDING'"
     :href="BBH_PAGE_MESS"
     target="_blank"
-    class="text-white bg-blue-600 w-fit py-2 px-4 rounded-md"
+    class="text-white bg-blue-600 w-fit py-2 px-4 rounded-md text-sm"
   >
     {{ $t('v1.view.main.dashboard.org.pay.recharge.transfer_info.support') }}
   </a>
@@ -115,7 +126,7 @@
         {{ $t('v1.view.main.dashboard.org.pay.recharge.transfer_info.hint_1') }}
         <a
           href="javascript:;"
-          class="underline"
+          class="underline uppercase text-slate-700"
           >{{
             $t('v1.view.main.dashboard.org.pay.recharge.transfer_info.here')
           }}</a
@@ -165,14 +176,18 @@ const $props = withDefaults(
     is_pay_partner?: boolean
     /**thông tin của đối tác */
     partner_info?: IBankAccount
+    /** wallet balance */
+    wallet_balance?: string
+    /** is modal */
+    is_modal?: boolean
   }>(),
   {}
 )
-
+/** Khai báo common store */
 const commonStore = useCommonStore()
-
+/** Khai báo transaction */
 const txn_info = defineModel<TransactionInfo>()
-
+/** Trạng thái check payment */
 const check_payment = defineModel<Boolean>('check_payment')
 
 /**Thông tin chuyển khoản của cty */
@@ -180,7 +195,7 @@ const BBH: IBankAccount = {
   bank_bin: 970407,
   account: '19036252323010',
   name: 'CTCP Công nghệ Chatbot Việt Nam',
-  bank: 'Ngân hàng TMCP Kỹ thương Việt Nam(Techcombank) CN Hà thành',
+  bank: 'Techcombank - Ngân hàng Kỹ thương Việt Nam - Chi nhánh Hà Thành',
   code: 'BBH_TCB',
 }
 const A_TUNG_TIMO: IBankAccount = {
@@ -196,41 +211,41 @@ const payment_info = ref<IBankAccount>()
 /**id của time out check giao dịch */
 const check_txn_timeout_id = ref<number>()
 
-// tính toán thông tin chuyển khoản khi khởi tạo
+/**  tính toán thông tin chuyển khoản khi khởi tạo*/
 onMounted(() => {
   payment_info.value = calcPaymentInfo()
 
-  // kiểm tra giao dịch đã thành công chưa
+  /**  kiểm tra giao dịch đã thành công chưa*/
   checkTxnSuccess()
 })
 
-// xoá time out check giao dịch
+/**  xoá time out check giao dịch*/
 onUnmounted(() => clearInterval(check_txn_timeout_id.value))
 
-// tính toán thông tin chuyển khoản khi có thay đổi mã
+/**  tính toán thông tin chuyển khoản khi có thay đổi mã*/
 watch(
   () => $props.txn_id,
   () => {
     payment_info.value = calcPaymentInfo()
 
-    // kiểm tra giao dịch đã thành công chưa
+    /**  kiểm tra giao dịch đã thành công chưa*/
     checkTxnSuccess()
   }
 )
 
 /**kiẻm tra xem giao dich đã thành công chưa */
 function checkTxnSuccess() {
-  // chỉ kiểm tra giao dịch mới tạo
+  /** chỉ kiểm tra giao dịch mới tạo */
   if (txn_info.value?.txn_status !== 'PENDING') return
 
   /**bước nhảy */
   // const TIMER = 1000 * 20 // 20s 1 lần
   const TIMER = 1000 * 5 // 20s 1 lần
 
-  // kiểm tra giao dịch liên tục, sau 20s sẽ chạy lần đầu tiên
+  /** kiểm tra giao dịch liên tục, sau 20s sẽ chạy lần đầu tiên */
   check_txn_timeout_id.value = setInterval(async () => {
     try {
-      // nếu không có id giao dịch thì dừng
+      /** nếu không có id giao dịch thì dừng */
       if (!txn_info.value?.txn_id || !txn_info.value?.txn_amount) throw 'NO_TXN'
 
       /**thời gian tạo giao dịch */
@@ -238,7 +253,7 @@ function checkTxnSuccess() {
       /**thời gian kiểm tra tối đa */
       const MAX_CHECK_TIME = 1000 * 60 * 30 // 30 phút
 
-      // nếu quá thời gian kiểm tra thì dừng
+      /** nếu quá thời gian kiểm tra thì dừng */
       if (Date.now() - CREATED_AT > MAX_CHECK_TIME) throw 'MAX_CHECK_TIME'
 
       /**dữ liệu giao dịch */
@@ -248,13 +263,12 @@ function checkTxnSuccess() {
         'v2'
       )
 
+      console.log(TXN, 'txn')
       // nếu không có giao dịch thì check lại sau
       if (!TXN) return
-
       // cập nhật thông tin giao dịch
       // txn_info.value = TXN
-      // txn_info.value = true
-
+      // txn_info.value = true as any
       check_payment.value = true
     } catch (e) {
       clearInterval(check_txn_timeout_id.value)
@@ -270,16 +284,16 @@ function calcPaymentInfo(): IBankAccount {
   const NON_INVOICE: IBankAccount =
     commonStore.partner?.bank_account?.non_invoice || A_TUNG_TIMO
 
-  // nếu không có mã, hoặc mã không bật chế độ đối tác, thì chuyển về cty
+  /** nếu không có mã, hoặc mã không bật chế độ đối tác, thì chuyển về cty */
   if (!$props?.is_pay_partner) return INVOICE
 
-  // nếu xuất hoá đơn thì vẫn chuyển về cty
+  /** nếu xuất hoá đơn thì vẫn chuyển về cty */
   if ($props?.is_issue_invoice) return INVOICE
 
-  // nếu không có thông tin đối tác thì chuyển về a Tùng
+  /** nếu không có thông tin đối tác thì chuyển về a Tùng */
   if (!size($props?.partner_info)) return NON_INVOICE
 
-  // nếu có thông tin đối tác thì chuyển về đối tác
+  /** nếu có thông tin đối tác thì chuyển về đối tác */
   return $props.partner_info || NON_INVOICE
 }
 </script>

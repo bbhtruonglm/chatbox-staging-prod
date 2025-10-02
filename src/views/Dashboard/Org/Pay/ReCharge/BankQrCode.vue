@@ -27,6 +27,7 @@ import { onMounted, ref, watch } from 'vue'
 
 import VueQrcode from '@chenfengyuan/vue-qrcode'
 import Loading from '@/components/Loading.vue'
+import { debounce } from 'lodash'
 
 const $props = withDefaults(
   defineProps<{
@@ -38,6 +39,8 @@ const $props = withDefaults(
     amount?: string
     /**nội dung chuyển khoản */
     message?: string
+    /** wallet balance */
+    wallet_balance?: string
   }>(),
   {}
 )
@@ -51,15 +54,60 @@ const is_loading = ref<boolean>(false)
 const qr_code_content = ref<string>()
 
 // khi có thay đổi thì sẽ tạo lại mã QR
-onMounted(createQrCodeContent)
-watch(() => $props.bank_bin, createQrCodeContent)
-watch(() => $props.consumer_id, createQrCodeContent)
-watch(() => $props.amount, createQrCodeContent)
-watch(() => $props.message, createQrCodeContent)
+// onMounted(createQrCodeContent)
+// watch(() => $props.bank_bin, createQrCodeContent)
+// watch(() => $props.consumer_id, createQrCodeContent)
+// watch(() => $props.amount, createQrCodeContent)
+// watch(() => $props.message, createQrCodeContent)
 
-/**tạo ra nội dung của mã QR */
+// /**tạo ra nội dung của mã QR */
+// async function createQrCodeContent() {
+//   console.log('createQrCodeContent', $props)
+//   // nếu thiếu thông tin thì thôi
+//   if (
+//     !$props.bank_bin ||
+//     !$props.consumer_id ||
+//     !$props.amount ||
+//     !$props.message ||
+//     !orgStore.selected_org_id
+//   )
+//     return
+
+//   // kích hoạt loading
+//   is_loading.value = true
+
+//   console.log('createQrCodeContent - start')
+//   console.log('org_id', orgStore.selected_org_id)
+//   console.log('bank_bin', $props.bank_bin)
+//   console.log('consumer_id', $props.consumer_id)
+//   console.log('amount', Number($props.amount))
+//   console.log('message', $props.message)
+
+//   try {
+//     // lấy nội dung mã QR
+//     qr_code_content.value = await qr_code({
+//       org_id: orgStore.selected_org_id,
+//       bank_bin: $props.bank_bin,
+//       consumer_id: $props.consumer_id,
+//       amount: Number($props.amount),
+//       message: $props.message,
+//       version: 'v2',
+//       txn_id: $props.message,
+//     })
+//   } catch (e) {
+//     // báo lỗi nếu có
+//     toastError(e)
+//   }
+
+//   // tắt loading
+//   is_loading.value = false
+// }
+
+/** gói hàm tạo QR code */
 async function createQrCodeContent() {
-  // nếu thiếu thông tin thì thôi
+  console.log('createQrCodeContent', $props)
+
+  /** nếu thiếu thông tin thì thôi */
   if (
     !$props.bank_bin ||
     !$props.consumer_id ||
@@ -69,24 +117,39 @@ async function createQrCodeContent() {
   )
     return
 
-  // kích hoạt loading
+  /** kích hoạt loading */
   is_loading.value = true
 
   try {
-    // lấy nội dung mã QR
+    /** lấy nội dung mã QR */
     qr_code_content.value = await qr_code({
       org_id: orgStore.selected_org_id,
       bank_bin: $props.bank_bin,
       consumer_id: $props.consumer_id,
-      amount: Number($props.amount),
+      amount:
+        Number($props.amount) -
+        ($props.wallet_balance ? Number($props.wallet_balance) : 0),
       message: $props.message,
+      version: 'v2',
+      txn_id: $props.message,
     })
   } catch (e) {
-    // báo lỗi nếu có
     toastError(e)
   }
 
-  // tắt loading
+  /** tắt loading */
   is_loading.value = false
 }
+
+/** debounce để tránh gọi nhiều lần khi props đổi liên tục */
+const createQrCodeContentDebounced = debounce(createQrCodeContent, 300)
+
+/** khi mounted thì gọi lần đầu */
+onMounted(createQrCodeContent)
+
+/** gộp watchers lại thành 1 */
+watch(
+  () => [$props.bank_bin, $props.consumer_id, $props.amount, $props.message],
+  createQrCodeContentDebounced
+)
 </script>

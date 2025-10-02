@@ -1,10 +1,10 @@
-import { Botx } from '@/utils/api/Botx'
-
 import type {
   OrgInfo,
   PaymentInfo,
   TransactionInfo,
 } from '@/service/interface/app/billing'
+
+import { Botx } from '@/utils/api/Botx'
 import type { IBankAccount } from './N4Service/Partner'
 import { singleton } from 'tsyringe'
 
@@ -141,9 +141,13 @@ export class BillingAppTxn extends Billing {
    */
   public async checkTxn(
     txn_id: string,
-    bank_name: string
-  ): Promise<TransactionInfo | undefined> {
-    return this.post('check_txn', { txn_id, bank_name })
+    bank_name: string,
+    version?: string
+  ): Promise<TransactionInfo | boolean | undefined> {
+    /** Khai báo body , nếu có version thì truyền vào */
+    const BODY = { txn_id, bank_name, ...(version && { version }) }
+    /** Gọi method post */
+    return this.post('check_txn', BODY)
   }
 }
 

@@ -15,7 +15,7 @@
       )
     </template>
     <template #action>
-      <div class="flex items-center gap-2 text-sm">
+      <div class="flex items-center justify-between gap-2 text-sm">
         <div class="relative">
           <MagnifyingGlassIcon
             class="absolute top-0 bottom-0 left-3 m-auto size-4 text-slate-500"
@@ -120,10 +120,13 @@ function showPage(page: IPage) {
   /** từ khóa tìm kiếm */
   const SEARCH = nonAccentVn(search_page.value)?.replace(/ /g, '')
   /** tên page */
-  const FULL_NAME = nonAccentVn(page?.alias || page?.name || '')?.replace(/ /g, '')
+  const FULL_NAME = nonAccentVn(page?.alias || page?.name || '')?.replace(
+    / /g,
+    ''
+  )
   /** id của page */
   const ID_PAGE = page?.fb_page_id?.replace(/ /g, '') || ''
-  
+
   // nếu tên hoặc id chứa từ khóa thì hiển thị
   return FULL_NAME.includes(SEARCH) || ID_PAGE.includes(SEARCH)
 }

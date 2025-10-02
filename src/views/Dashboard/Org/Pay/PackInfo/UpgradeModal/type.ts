@@ -38,4 +38,6 @@ export interface IContent {
   domain_logo: string
   /**Hỗ trợ. */
   support: string
+  /** Ghi chú */
+  note?: string
 }

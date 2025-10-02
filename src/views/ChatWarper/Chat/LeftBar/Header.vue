@@ -56,11 +56,15 @@
         </button>
       </div>
       <div class="flex gap-3 text-slate-500">
-        <button class="p-2 bg-slate-100 rounded-full"
-          @click="() => {
-            modal_zalo_personal_ref?.toggleModal()
-            message_data = undefined
-          }"
+        <button
+          class="p-2 bg-slate-100 rounded-full"
+          @click="
+            () => {
+              modal_zalo_personal_ref?.toggleModal()
+              message_data = undefined
+            }
+          "
+          v-tooltip.bottom="$t('Thêm khách hàng')"
         >
           <UserPlusIcon class="size-4 flex-shrink-0" />
         </button>
@@ -98,7 +102,7 @@
     v-if="isFilterActive()"
     class="bg-slate-100 rounded-lg py-1.5 px-2 text-xs flex gap-2 items-center"
     :class="{
-      'hidden': conversationStore.selected_quick_filter !== 'ALL',
+      hidden: conversationStore.selected_quick_filter !== 'ALL',
     }"
   >
     <div class="flex gap-2 w-full min-w-0">
@@ -205,9 +209,7 @@ const filter = computed(() => {
   }
   /** nếu là lọc tương tác từ nhóm */
   if (conversationStore.option_filter_page_data.display_style === 'GROUP') {
-    FILTER_GENERAL.push(
-      $t('v1.view.main.dashboard.chat.filter.interact.group')
-    )
+    FILTER_GENERAL.push($t('v1.view.main.dashboard.chat.filter.interact.group'))
   }
 
   /** nếu là lọc chưa đọc */
@@ -352,13 +354,12 @@ watch(() => search_conversation.value, onSearchConversation)
 // läng nghe trạng thái của phím tắt
 watch(
   () => commonStore.keyboard_shortcut,
-  (value) => {
+  value => {
     // nếu không phải tìm kiếm thì bỏ qua
-    if(value !== 'search_conversation') return
+    if (value !== 'search_conversation') return
 
     // nếu chưa search thì bật chế độ search
-    if(!is_search.value) $main.toggleSearch()
-
+    if (!is_search.value) $main.toggleSearch()
     // nếu đã có search rồi thi focus vào ô tìm kiếm
     else ref_search_conversation.value?.focus()
 

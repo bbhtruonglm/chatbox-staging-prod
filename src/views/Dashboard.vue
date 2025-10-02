@@ -20,7 +20,9 @@
             {{ $t('v1.view.main.dashboard.select_page.group_page.title') }}
           </button>
         </template>
-        <ReChargeBtn v-if="$route.path.includes('/dashboard/org/') && IS_SHOW_PAYMENT" />
+        <ReChargeBtn
+          v-if="$route.path.includes('/dashboard/org/') && IS_SHOW_PAYMENT"
+        />
       </template>
     </Header>
     <div class="overflow-hidden h-full">
@@ -62,7 +64,6 @@ import DropdownPickConnectPlatform from '@/views/Dashboard/SelectPage/DropdownPi
 import PlusCircleIcon from '@/components/Icons/PlusCircle.vue'
 import SquaresPlusIcon from '@/components/Icons/SquaresPlus.vue'
 import { ChevronDownIcon } from '@heroicons/vue/24/solid'
-
 
 const pageStore = usePageStore()
 const selectPageStore = useSelectPageStore()

@@ -14,6 +14,12 @@
         @click="zalo_personal_dropdown_ref?.toggleDropdown"
       >
         <div class="flex flex-grow items-center gap-1">
+          <ExclamationTriangleIcon
+            v-if="selected_page_info?.is_disconnected"
+            v-tooltip.bottom="$t('Trang mất quyền truy cập, cần cấp lại quyền')"
+            class="size-4 text-red-500 flex-shrink-0"
+          />
+
           <PageAvatar
             v-if="selected_page_id"
             :page_info="selected_page_info"
@@ -33,6 +39,7 @@
           class="size-5 text-slate-500 absolute top-2 m-auto left-2"
         />
         <input
+          ref="search_input"
           v-model="query_string_data.phone"
           type="text"
           :placeholder="$t('Nhập số điện thoại muốn tìm kiếm')"
@@ -144,10 +151,13 @@
                 }}
                 <PencilSquareIcon
                   v-if="conversationStore.select_conversation"
-                  @click="() => {
-                    is_edit_name = true
-                    alias_name = conversationStore.select_conversation?.client_name || ''
-                  }"
+                  @click="
+                    () => {
+                      is_edit_name = true
+                      alias_name =
+                        conversationStore.select_conversation?.client_name || ''
+                    }
+                  "
                   class="size-4 cursor-pointer text-slate-500"
                 />
               </p>
@@ -211,7 +221,8 @@
               >
                 {{ $t('Hủy') }}
               </button>
-              <button class="py-2 px-4 rounded-md bg-blue-700 text-white"
+              <button
+                class="py-2 px-4 rounded-md bg-blue-700 text-white"
                 @click="$main.changeAliasName()"
               >
                 {{ $t('Lưu') }}
@@ -281,6 +292,12 @@
           v-show="$main.isShowZaloPersonal(zlp_os?.page_info)"
           @click="$main.selectPage(zlp_os)"
         >
+          <ExclamationTriangleIcon
+            v-if="zlp_os?.page_info?.is_disconnected"
+            v-tooltip.bottom="$t('Trang mất quyền truy cập, cần cấp lại quyền')"
+            class="size-4 text-red-500 flex-shrink-0"
+          />
+
           <PageAvatar
             :page_info="zlp_os?.page_info"
             class="rounded-full size-5"
@@ -498,7 +515,11 @@ class Main {
     orgStore.list_os = OSS
 
     /**lọc ra các trang zalo cá nhân */
-    zlp_oss.value = OSS.filter(os => os?.page_info?.type === 'ZALO_PERSONAL')
+    zlp_oss.value = OSS.filter(
+      os =>
+        os?.page_info?.type === 'ZALO_PERSONAL' &&
+        !os?.page_info?.is_disconnected
+    )
 
     /** id trang zalo lưu trong local storage */
     const ZALO_PAGE_ID = this.getZaloPageIdFromLocalStorage()
@@ -865,7 +886,7 @@ class Main {
     ).updateClientName(alias_name.value)
 
     // nếu không có hội thoại thì thôi
-    if(!conversationStore.select_conversation) return
+    if (!conversationStore.select_conversation) return
 
     // cập nhật tên hội thoại
     conversationStore.select_conversation.client_name = alias_name.value
@@ -926,6 +947,18 @@ onUnmounted(() => {
   // đóng socket
   $socket.close()
 })
+
+const search_input = ref<HTMLInputElement | null>(null)
+
+watch(
+  () => view.value,
+  async newVal => {
+    if (newVal === 'SEARCH') {
+      await nextTick()
+      search_input.value?.focus()
+    }
+  }
+)
 
 watch(
   () => view.value,

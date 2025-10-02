@@ -3,6 +3,7 @@
     <template #icon>
       <UsersIcon class="w-5 h-5" />
     </template>
+
     <template #title>
       {{ $t('v1.view.main.dashboard.org.setting.member') }}
       (
@@ -15,7 +16,7 @@
       )
     </template>
     <template #action>
-      <div class="flex items-center gap-2 text-sm">
+      <div class="flex items-center justify-between gap-2 text-sm">
         <div class="relative">
           <MagnifyingGlassIcon
             class="absolute top-0 bottom-0 left-3 m-auto size-4 text-slate-500"
@@ -35,6 +36,7 @@
         </button>
       </div>
     </template>
+
     <template #item>
       <div
         class="grid gap-6 grid-cols-1 md:grid-cols-4 max-h-[50dvh] overflow-auto"

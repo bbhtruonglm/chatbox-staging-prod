@@ -15,6 +15,10 @@
     "verbatimModuleSyntax": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
+    "moduleResolution": "Node",
+    "ignoreDeprecations": "6.0",
+    "allowJs": true, // 👈 thêm dòng này
+    "checkJs": false // (optional) tắt check lỗi JS
   },
   "references": [
     {

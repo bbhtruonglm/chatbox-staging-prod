@@ -1,6 +1,5 @@
-import { chatboxSync } from '@/service/api/chatbox/common'
-import type { QuotaType } from '@/service/interface/app/ai'
 import type {
+  ITxnMeta,
   MemberShipInfo,
   NotiInfo,
   OrgInfo,
@@ -11,6 +10,9 @@ import type {
   TransactionInfo,
   WalletInfo,
 } from '@/service/interface/app/billing'
+
+import type { QuotaType } from '@/service/interface/app/ai'
+import { chatboxSync } from '@/service/api/chatbox/common'
 
 /**đọc tổ chức */
 export const read_org = async (org_id?: string): Promise<OrgInfo[]> =>
@@ -117,7 +119,8 @@ export const create_txn = async (
   txn_amount: number,
   txn_payment_method: TransactionInfo['txn_payment_method'],
   txn_is_issue_invoice: boolean,
-  voucher_code?: string
+  voucher_code?: string,
+  meta?: ITxnMeta
 ): Promise<TransactionInfo> =>
   chatboxSync({
     uri: `${$env.host.billing}/app/transaction/create_txn`,
@@ -128,6 +131,7 @@ export const create_txn = async (
       txn_payment_method,
       txn_is_issue_invoice,
       voucher_code,
+      meta,
     },
   })
 
@@ -144,7 +148,7 @@ export const purchase_package = async (
       org_id,
       wallet_id,
       package_type,
-      months
+      months,
     },
   })
 
@@ -200,7 +204,7 @@ export const get_noti = async (
   chatboxSync({
     uri: `${$env.host.billing}/app/noti/get_noti`,
     body: { org_id, limit, is_read, noti_code },
-    is_disable_org: true
+    is_disable_org: true,
   })
 
 /**xem thông báo */
@@ -208,7 +212,7 @@ export const count_noti = async (org_id: string): Promise<number> =>
   chatboxSync({
     uri: `${$env.host.billing}/app/noti/count_noti`,
     body: { org_id },
-    is_disable_org: true
+    is_disable_org: true,
   })
 
 /**tạo nội dung cho mã qr */

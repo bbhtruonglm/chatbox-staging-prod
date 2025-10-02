@@ -140,10 +140,29 @@
       </div>
     </template>
   </Alert>
-  <NotEnoughMoney ref="not_enough_money_ref" />
+  <!-- <NotEnoughMoney ref="not_enough_money_ref" /> -->
+  <AutoPaymentModal
+    :is_confirm_open="auto_payment"
+    :title="$t('v1.view.main.dashboard.org.pay.upgrade.confirm_title')"
+    :selected_pack="
+      $t(
+        `v1.view.main.dashboard.org.pay.inc_quota.${inc_quota_type?.toLowerCase()}`
+      )
+    "
+    :amount="TOTAL_AMOUNT.toString()"
+    :wallet_balance="wallet_balance"
+    @close="auto_payment = false"
+    :SELECTED="amount?.toString() || '1'"
+    :closeConfirmModal="closeConfirmModal"
+    v-model:check_payment="check_payment"
+    :is_success_open="is_success_open"
+    :MONTHS="[]"
+    :payment_type="inc_quota_type?.toUpperCase() as PAYMENT_TYPE || 'PAGE'"
+    :meta="meta"
+  />
 </template>
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { toast } from '@/service/helper/alert'
 import { inc_quota, read_wallet } from '@/service/api/chatbox/billing'
 import { useOrgStore } from '@/stores'
@@ -154,9 +173,13 @@ import Loading from '@/components/Loading.vue'
 import Alert from '@/components/Alert.vue'
 import NotEnoughMoney from '@/views/Dashboard/Org/Pay/PackInfo/NotEnoughMoney.vue'
 
-import type { QuotaType } from '@/service/interface/app/ai'
+import AutoPaymentModal from '@/views/Dashboard/Org/Pay/PackInfo/AutoPaymentModal.vue'
 
+import type { QuotaType } from '@/service/interface/app/ai'
+/** Hàm callback done */
 const $emit = defineEmits(['done'])
+/** Loại thanh toán */
+type PAYMENT_TYPE = 'PAGE' | 'STAFF' | 'PACKAGE' | 'TOKEN'
 
 const $props = withDefaults(
   defineProps<{
@@ -165,8 +188,9 @@ const $props = withDefaults(
   }>(),
   {}
 )
-
+/** data tổ chức ở store */
 const orgStore = useOrgStore()
+/** Hàm dịch i18n */
 const { t: $t } = useI18n()
 
 /**có đang loading không */
@@ -175,16 +199,85 @@ const is_loading = ref<boolean>(false)
 const inc_quota_ref = ref<InstanceType<typeof Alert>>()
 /**ref của modal thông báo không đủ tiền */
 const not_enough_money_ref = ref<InstanceType<typeof NotEnoughMoney>>()
+/** Tính toán tổng số tiền */
+const TOTAL_AMOUNT = computed(() => {
+  /** Nếu k có amount thì trả về 0 */
+  if (!amount.value) return 0
+  /** Nếu loại thanh toán là PAGE */
+  if ($props.inc_quota_type === 'PAGE') {
+    return amount.value * orgStore.calcDayRemaining() * 2000
+  }
+  /** Nếu loại thanh toán là STAFF */
+  if ($props.inc_quota_type === 'STAFF') {
+    return amount.value * orgStore.calcDayRemaining() * 1000
+  }
+  return 0
+})
+
+/**ref của modal thanh toán tự động */
+const auto_payment = ref<boolean>(false)
 /**số quota muốn thêm */
 const amount = ref<number>(0)
+
+/** Check trạng thái payment */
+const check_payment = ref(false)
+/** trạng thái payment modal */
+const is_success_open = ref(false)
+
+/** Số tiền sau khi giảm giá */
+const wallet_balance = ref<number>(0)
 
 /**ẩn hiện modal của component */
 function toggleModal() {
   inc_quota_ref.value?.toggleModal()
 }
+
+/** Khai báo meta cho việc tự động mua gói */
+const meta = ref<{
+  type: 'PURCHASE' | 'INCREASE' | 'TOP_UP_WALLET'
+  product: QuotaType
+}>({
+  type: 'INCREASE', // giá trị mặc định
+  product: ($props.inc_quota_type?.toUpperCase() as QuotaType) || 'PAGE',
+})
+
+/** đóng modal xác nhận thanh toán */
+function closeConfirmModal() {
+  /** Đóng modal xác nhận */
+  auto_payment.value = false
+  /** reset thông tin gói đã chọn */
+  // selected_pack.value = undefined
+  /** reset thông tin xác thực */
+  // verify_voucher.value = {}
+  // /** Reset thông tin mã giảm giá */
+  // voucher_code.value = ''
+}
+
+/** Theo dõi trạng thái payment */
+watch(check_payment, value => {
+  if (value) {
+    /** Bật modal báo success */
+    is_success_open.value = true
+    /** sau khi thanh toán thành công */
+    setTimeout(() => {
+      /** Tắt modal báo nạp tiền thành công */
+      is_success_open.value = false
+      /** sau 1s thì tắt */
+      auto_payment.value = false
+      /** Tăt modal */
+      toggleModal()
+      /** thông báo mua gói thành công */
+      toast('success', $t(`v1.view.main.dashboard.org.pay.inc_quota.success`))
+    }, 1000)
+    setTimeout(() => {
+      /** refresh lại trang */
+      window.location.reload()
+    }, 2000)
+  }
+})
 /**mua thêm quota */
 async function incQuota() {
-  // nếu đang loading thì không làm gì
+  /** nếu đang loading thì không làm gì */
   if (
     !orgStore.selected_org_id ||
     is_loading.value ||
@@ -193,20 +286,23 @@ async function incQuota() {
   )
     return
 
-  // mở loading
+  /** mở loading */
   is_loading.value = true
 
   try {
-    // TODO check amount trước khi thêm
+    /** TODO check amount trước khi thêm */
 
     /**dữ liệu của ví */
     const WALLET = await read_wallet(orgStore.selected_org_id)
+    /** Lưu số dư ví */
+    wallet_balance.value = WALLET.wallet_balance || 0
 
-    // nếu không có ví thì thông báo lỗi
+    /** nếu không có ví thì thông báo lỗi */
     if (!WALLET?.wallet_id)
       throw $t('v1.view.main.dashboard.org.pay.recharge.wrong_wallet_id')
 
-    // thêm quota
+    meta.value.product = $props.inc_quota_type
+    /** thêm quota */
     await inc_quota(
       orgStore.selected_org_id,
       WALLET?.wallet_id,
@@ -214,24 +310,25 @@ async function incQuota() {
       amount.value
     )
 
-    // thông báo mua gói thành công
+    /** thông báo mua gói thành công */
     toast('success', $t(`v1.view.main.dashboard.org.pay.inc_quota.success`))
 
-    // chờ 1s
+    /** chờ 1s */
     await new Promise(cb => setTimeout(cb, 1000))
 
-    // reload lại trang
+    /** reload lại trang */
     window.location.reload()
   } catch (e) {
-    // thông báo lỗi
-    not_enough_money_ref.value?.toggleModal()
+    /** thông báo lỗi */
+    // not_enough_money_ref.value?.toggleModal()
+    auto_payment.value = true
   }
 
-  // tắt loading
+  /** tắt loading */
   is_loading.value = false
 }
 
-// cung cấp hàm toggle modal cho component cha
+/** cung cấp hàm toggle modal cho component cha */
 defineExpose({ toggleModal })
 </script>
 <style scoped lang="scss">

@@ -26,6 +26,7 @@
         class="custom-input"
       />
     </div>
+    <!-- @click="$service_oauth.redirect('/onboarding')" -->
     <button
       @click="$main.goRegisterDetail"
       class="custom-btn-black"
@@ -68,6 +69,7 @@ import Facebook from '@/components/OAuth/Facebook.vue'
 import GoLogin from '@/views/OAuth/GoLogin.vue'
 import Or from '@/views/OAuth/Or.vue'
 import AlertError from '@/views/OAuth/AlertError.vue'
+import Onboarding from '@/views/OAuth/Onboarding/Onboarding.vue'
 
 import type { IAlert } from '@/utils/helper/Alert/type'
 
@@ -81,6 +83,9 @@ const $service_oauth = container.resolve(ServiceOAuth)
 
 /**email đăng nhập */
 const email = ref<string>()
+
+/** Hàm mở onboarding */
+const openOnboarding = () => {}
 
 class Main {
   /**
@@ -100,13 +105,13 @@ class Main {
   @handleLoadingOauth
   @handleErrorOauth()
   async goRegisterDetail() {
-    // kiểm tra email
+    /** kiểm tra email */
     await VLD_EMAIL.validate({ email: email.value })
 
-    // kiểm tra email đã tồn tại trên hệ thống chưa
+    /** kiểm tra email đã tồn tại trên hệ thống chưa */
     await this.API_OAUTH_BASIC.checkEmail(email.value!)
 
-    // chuyển hướng vào trang chi tiết đăng ký
+    /** chuyển hướng vào trang chi tiết đăng ký */
     this.SERVICE_OAUTH.redirect({
       path: '/oauth/register-detail',
       query: { email: email.value },
