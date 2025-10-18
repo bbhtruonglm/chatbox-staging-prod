@@ -233,6 +233,14 @@
             </div>
           </div>
         </div>
+        <div class="w-full text-right">
+          <Pagination
+            :current-page-parent="current_page"
+            :is-next-page="!is_done"
+            :is-loading="is_loading"
+            :on-page-change="handlePageChange"
+          />
+        </div>
         <div class="mx-auto text-xs text-slate-800">
           <p
             v-if="countSelectFile()"
@@ -351,6 +359,7 @@ import { ArrowLeftIcon, LinkIcon, TrashIcon } from '@heroicons/vue/24/outline'
 
 import { getItem, setItem } from '@/service/helper/localStorage'
 import ModalChangeAlbumSource from './ModalChangeAlbumSource.vue'
+import Pagination from './Pagination.vue'
 
 /**các giá tị của danh mục */
 type CategoryType = 'NEW' | 'FOLDER'
@@ -368,6 +377,19 @@ const CACHE_LIST_ALBUM = new Map<string, any[]>()
 
 /**số bản ghi một thời điểm */
 const LIMIT = 80
+
+/** Trang hiện tại (bắt đầu từ 0 hoặc 1, tùy backend) */
+const current_page = ref(0)
+
+/** Cờ cho biết có trang tiếp theo hay không */
+const has_next_page = ref(true)
+/** Xử lý chuyển trang */
+const handlePageChange = (page: number) => {
+  /** Cập nhật current_page */
+  // current_page.value = page - 1 // Nếu component bắt đầu đếm từ 1 thì trừ 1
+
+  getFiles()
+}
 
 /**ref của menu thiết lập folder */
 const folder_menu_ref = ref<InstanceType<typeof Dropdown>>()
@@ -484,15 +506,68 @@ function onChangePageIds(ids: string[]) {
   }
 }
 
+// function getFiles(is_change_page = false, ids: string[] = []) {
+//   /** lấy page_id từ local */
+//   const PAGE_ID_MAP = getItem('album_page_id') || {}
+//   /** Lấy giá trị của page_id */
+//   page_ids.value =
+//     PAGE_ID_MAP?.[conversationStore.select_conversation?.fb_page_id || ''] ||
+//     conversationStore.select_conversation?.fb_page_id
+
+//   /** nếu không có id trang thì thôi */
+//   if (!page_ids.value) return
+
+//   is_loading.value = true
+//   is_done.value = false
+
+//   waterfall(
+//     [
+//       (cb: CbError) =>
+//         read_file_album(
+//           {
+//             page_id: !isEmpty(ids) ? ids : page_ids.value || [], // ✅ truyền mảng trực tiếp
+//             folder_id: selected_folder_id.value,
+//             limit: LIMIT,
+//             skip: skip.value,
+//           },
+//           (e, r) => {
+//             if (e) return cb(e)
+//             if (!r?.length || r.length < LIMIT) is_done.value = true
+
+//             if (is_change_page) {
+//               file_list.value = (r as FileInfo[]).map(file => ({
+//                 ...file,
+//                 is_select: is_select_all.value,
+//               }))
+//               file_list_root.value = (r as FileInfo[]).map(file => ({
+//                 ...file,
+//                 is_select: is_select_all.value,
+//               }))
+//             } else {
+//               addDataToFileList(r)
+//             }
+
+//             cb()
+//           }
+//         ),
+//       (cb: CbError) => {
+//         skip.value += LIMIT
+//         cb()
+//       },
+//     ],
+//     e => {
+//       is_loading.value = false
+//       if (e) toastError(e)
+//     }
+//   )
+// }
+
 function getFiles(is_change_page = false, ids: string[] = []) {
-  /** lấy page_id từ local */
   const PAGE_ID_MAP = getItem('album_page_id') || {}
-  /** Lấy giá trị của page_id */
   page_ids.value =
     PAGE_ID_MAP?.[conversationStore.select_conversation?.fb_page_id || ''] ||
     conversationStore.select_conversation?.fb_page_id
 
-  /** nếu không có id trang thì thôi */
   if (!page_ids.value) return
 
   is_loading.value = true
@@ -503,16 +578,21 @@ function getFiles(is_change_page = false, ids: string[] = []) {
       (cb: CbError) =>
         read_file_album(
           {
-            page_id: !isEmpty(ids) ? ids : page_ids.value || [], // ✅ truyền mảng trực tiếp
+            page_id: !isEmpty(ids) ? ids : page_ids.value || [],
             folder_id: selected_folder_id.value,
             limit: LIMIT,
-            skip: skip.value,
+            skip: skip.value, // ✅ offset do handlePageChange set
           },
           (e, r) => {
             if (e) return cb(e)
-            if (!r?.length || r.length < LIMIT) is_done.value = true
+
+            // ✅ Nếu dữ liệu ít hơn LIMIT => không còn trang tiếp theo
+            is_done.value = !r?.length || r.length < LIMIT
+
+            skip.value = r?.length || skip.value
 
             if (is_change_page) {
+              // ✅ Khi chuyển trang -> replace data cũ
               file_list.value = (r as FileInfo[]).map(file => ({
                 ...file,
                 is_select: is_select_all.value,
@@ -522,14 +602,16 @@ function getFiles(is_change_page = false, ids: string[] = []) {
                 is_select: is_select_all.value,
               }))
             } else {
+              // ✅ Khi load thêm (scroll, v.v.)
               addDataToFileList(r)
             }
 
             cb()
           }
         ),
-      (cb: CbError) => {
-        skip.value += LIMIT
+      (cb: any) => {
+        // ❗ Không tự tăng skip ở đây nữa, vì handlePageChange đã điều khiển
+
         cb()
       },
     ],
@@ -656,11 +738,33 @@ function deleteFile(select_file: FileInfo) {
   /** gắn cờ đang chạy */
   is_loading.value = true
 
+  /** Lấy dữ liệu từ localStorage */
+  const PAGE_ID_MAP = getItem('album_page_id') || {}
+  /** ID mặc định */
+  const DEFAULT_ID = conversationStore.select_conversation?.fb_page_id || ''
+
+  /** ✅ Xác định NEW_PAGE_ID */
+  let new_page_id = DEFAULT_ID
+
+  if (Object.keys(PAGE_ID_MAP).length > 0) {
+    if (PAGE_ID_MAP[DEFAULT_ID] && PAGE_ID_MAP[DEFAULT_ID].length > 0) {
+      /** 🟢 Nếu map có chứa DEFAULT_ID → lấy phần tử đầu tiên của mảng đó */
+      new_page_id = PAGE_ID_MAP[DEFAULT_ID][0]
+    } else {
+      /** 🟡 Nếu không chứa DEFAULT_ID → lấy phần tử đầu tiên của map */
+      const FIRST_KEY = Object.keys(PAGE_ID_MAP)[0]
+      const FIRST_ARRAY = PAGE_ID_MAP[FIRST_KEY]
+      if (Array.isArray(FIRST_ARRAY) && FIRST_ARRAY.length > 0) {
+        new_page_id = FIRST_ARRAY[0]
+      }
+    }
+  }
+
   /** xoá file */
   delete_file_album(
     {
       // page_id: conversationStore.select_conversation?.fb_page_id!,
-      page_id: page_id.value,
+      page_id: new_page_id,
       file_id: select_file._id,
     },
     (e, r) => {
@@ -768,12 +872,33 @@ function deleteFolder() {
 
   /** gắn cờ đang chạy */
   is_loading.value = true
+  /** Lấy dữ liệu từ localStorage */
+  const PAGE_ID_MAP = getItem('album_page_id') || {}
+  /** ID mặc định */
+  const DEFAULT_ID = conversationStore.select_conversation?.fb_page_id || ''
+
+  /** ✅ Xác định NEW_PAGE_ID */
+  let new_page_id = DEFAULT_ID
+
+  if (Object.keys(PAGE_ID_MAP).length > 0) {
+    if (PAGE_ID_MAP[DEFAULT_ID] && PAGE_ID_MAP[DEFAULT_ID].length > 0) {
+      /** 🟢 Nếu map có chứa DEFAULT_ID → lấy phần tử đầu tiên của mảng đó */
+      new_page_id = PAGE_ID_MAP[DEFAULT_ID][0]
+    } else {
+      /** 🟡 Nếu không chứa DEFAULT_ID → lấy phần tử đầu tiên của map */
+      const FIRST_KEY = Object.keys(PAGE_ID_MAP)[0]
+      const FIRST_ARRAY = PAGE_ID_MAP[FIRST_KEY]
+      if (Array.isArray(FIRST_ARRAY) && FIRST_ARRAY.length > 0) {
+        new_page_id = FIRST_ARRAY[0]
+      }
+    }
+  }
 
   /** xoá thư mục */
   delete_folder_album(
     {
       // page_id: conversationStore.select_conversation?.fb_page_id!,
-      page_id: page_id.value,
+      page_id: new_page_id,
       folder_id: selected_folder.value?._id,
     },
     (e, r) => {
@@ -885,11 +1010,16 @@ function addDataToFileList(
     ...file,
     is_select: is_select_all.value,
   }))
+  if (data.length < LIMIT) {
+    is_done.value = true
+  }
   /** Check type action  */
   if (source === 'fetch') {
     /** fetch từ server → thêm cuối danh sách */
-    file_list.value = [...file_list.value, ...NEW_FILES]
-    file_list_root.value = [...file_list_root.value, ...NEW_FILES]
+    file_list.value = [...NEW_FILES]
+    file_list_root.value = [...NEW_FILES]
+    // file_list.value = [...file_list.value, ...NEW_FILES]
+    // file_list_root.value = [...file_list_root.value, ...NEW_FILES]
   } else {
     /** upload mới → thêm đầu danh sách */
     file_list.value = [...NEW_FILES, ...file_list.value]
