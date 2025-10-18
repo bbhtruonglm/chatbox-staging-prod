@@ -235,7 +235,7 @@
         </div>
         <div class="w-full text-right">
           <Pagination
-            :current-page-parent="current_page"
+            :current-page-parent="current_page + 1"
             :is-next-page="!is_done"
             :is-loading="is_loading"
             :on-page-change="handlePageChange"
@@ -381,13 +381,18 @@ const LIMIT = 80
 /** Trang hiện tại (bắt đầu từ 0 hoặc 1, tùy backend) */
 const current_page = ref(0)
 
-/** Cờ cho biết có trang tiếp theo hay không */
-const has_next_page = ref(true)
-/** Xử lý chuyển trang */
-const handlePageChange = (page: number) => {
-  /** Cập nhật current_page */
-  // current_page.value = page - 1 // Nếu component bắt đầu đếm từ 1 thì trừ 1
+/** Hàm xử lý khi chuyển trang */
+const handlePageChange = (page: number, direction: 'next' | 'prev') => {
+  if (is_loading.value) return
 
+  if (direction === 'next') {
+    skip.value += LIMIT * current_page.value
+  } else if (direction === 'prev') {
+    skip.value =
+      LIMIT * (current_page.value - 1 > 0 ? current_page.value - 1 : 0)
+  }
+
+  current_page.value = page - 1
   getFiles()
 }
 
@@ -586,23 +591,24 @@ function getFiles(is_change_page = false, ids: string[] = []) {
           (e, r) => {
             if (e) return cb(e)
 
-            // ✅ Nếu dữ liệu ít hơn LIMIT => không còn trang tiếp theo
+            /** ✅ Nếu dữ liệu ít hơn LIMIT => không còn trang tiếp theo */
             is_done.value = !r?.length || r.length < LIMIT
-
-            skip.value = r?.length || skip.value
+            /** Cập nhật skip value */
+            skip.value = skip.value + Number(r?.length) || 0
 
             if (is_change_page) {
-              // ✅ Khi chuyển trang -> replace data cũ
+              /** ✅ Khi chuyển trang -> replace data cũ */
               file_list.value = (r as FileInfo[]).map(file => ({
                 ...file,
                 is_select: is_select_all.value,
               }))
+              /** File root */
               file_list_root.value = (r as FileInfo[]).map(file => ({
                 ...file,
                 is_select: is_select_all.value,
               }))
             } else {
-              // ✅ Khi load thêm (scroll, v.v.)
+              /** ✅ Khi load thêm (scroll, v.v.) */
               addDataToFileList(r)
             }
 
@@ -610,7 +616,7 @@ function getFiles(is_change_page = false, ids: string[] = []) {
           }
         ),
       (cb: any) => {
-        // ❗ Không tự tăng skip ở đây nữa, vì handlePageChange đã điều khiển
+        /** ❗ Không tự tăng skip ở đây nữa, vì handlePageChange đã điều khiển */
 
         cb()
       },

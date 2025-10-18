@@ -38,8 +38,10 @@ interface PaginationProps {
   isNextPage: boolean
   /** Đang loading không */
   isLoading: boolean
+
   /** Callback khi chuyển trang */
-  onPageChange: (page: number) => void
+  onPageChange: (page: number, direction: 'next' | 'prev') => void
+
   /** Có cần reset trang không */
   onReset?: boolean
 }
@@ -53,7 +55,7 @@ const currentPage = ref(props.currentPageParent || 1)
 const handlePrevious = () => {
   if (currentPage.value > 1) {
     currentPage.value--
-    props.onPageChange(currentPage.value)
+    props.onPageChange(currentPage.value, 'prev')
     emit('update:page', currentPage.value)
   }
 }
@@ -62,7 +64,7 @@ const handlePrevious = () => {
 const handleNext = () => {
   if (props.isNextPage) {
     currentPage.value++
-    props.onPageChange(currentPage.value)
+    props.onPageChange(currentPage.value, 'next')
     emit('update:page', currentPage.value)
   }
 }
