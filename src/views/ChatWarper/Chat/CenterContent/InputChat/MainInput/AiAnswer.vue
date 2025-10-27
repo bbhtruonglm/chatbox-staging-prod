@@ -74,6 +74,8 @@ const ai_answer = computed({
   set: (value?: string) => {
     // ghi đè câu trả lời vào store
     set(conversationStore, 'select_conversation.ai_answer', value)
+
+    console.log('2222222222222222222222222222222222222222')
     set(
       conversationStore.conversation_list,
       [conversationStore.select_conversation?.data_key || '', 'ai_answer'],

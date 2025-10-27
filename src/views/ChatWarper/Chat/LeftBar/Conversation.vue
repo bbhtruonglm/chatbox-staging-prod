@@ -252,7 +252,7 @@ class Main {
       if (conversation.fb_page_id === conversation.fb_client_id)
         delete CONVERSATIONS?.[key]
     })
-
+    console.log('666666666666666666666')
     // thêm vào danh sách conversation
     conversationStore.conversation_list = {
       ...conversationStore.conversation_list,
@@ -315,18 +315,26 @@ class Main {
 
   /**xử lý socket conversation */
   onRealtimeUpdateConversation({ detail }: CustomEvent) {
-    // nếu không có dữ liệu thì thôi
-    if (!detail) return
+    // Nếu đang clear hoặc đang chuyển hội thoại thì bỏ qua socket update
+    if (
+      conversationStore.is_clearing_conversation ||
+      conversationStore.is_switching_conversation
+    ) {
+      return
+    }
 
-    // nạp dữ liệu
+    /** nếu không có dữ liệu thì thôi */
+    if (!detail) return
+    console.log('777777777777777777777777777777777777')
+    /** nạp dữ liệu */
     let { conversation, event } = detail
     /**danh sách hội thoại */
     let conversation_list = conversationStore.conversation_list
 
-    // nếu không có dữ liệu hội thoại thì thôi
+    /** nếu không có dữ liệu hội thoại thì thôi */
     if (!conversation) return
 
-    // nếu không đúng tab thì bỏ qua
+    /** nếu không đúng tab thì bỏ qua */
     if (
       (conversation?.conversation_type || 'CHAT') !==
       (conversationStore.option_filter_page_data?.conversation_type || 'CHAT')
@@ -381,21 +389,40 @@ class Main {
       // nếu sort chưa đọc lên đầu và là tin của page
       (SPECIAL_PAGE_CONFIG?.sort_conversation === 'UNREAD' &&
         conversation?.last_message_type === 'page')
-    )
-      conversation_list[conversation.data_key] = conversation
+    ) {
+      console.log('conversationconversationconversationconversation')
+
+      console.log(conversation, 'conversation')
+
+      if (
+        !conversationStore.option_filter_page_data.not_response_client ||
+        (conversationStore.option_filter_page_data.not_response_client &&
+          conversation?.last_message_type === 'client')
+      ) {
+        conversation_list[conversation.data_key] = conversation
+      }
+    }
     // nạp dữ liệu vào danh sách hội thoại lên đầu
     else {
-      // xoá dữ liệu cũ
-      delete conversation_list[conversation.data_key]
+      console.log('conversationconversationconversation333333')
+      /** Đoạn này cần xử lý: là client và page ??? */
+      if (
+        !conversationStore.option_filter_page_data.not_response_client ||
+        (conversationStore.option_filter_page_data.not_response_client &&
+          conversation?.last_message_type === 'client')
+      ) {
+        // xoá dữ liệu cũ
+        delete conversation_list[conversation.data_key]
 
-      // thêm dữ liệu mới lên đầu của obj
-      conversation_list = {
-        [conversation.data_key]: conversation,
-        ...conversation_list,
+        // thêm dữ liệu mới lên đầu của obj
+        conversation_list = {
+          [conversation.data_key]: conversation,
+          ...conversation_list,
+        }
+        console.log('888888888888888888888888888888888888888888')
+        // nạp lại store
+        conversationStore.conversation_list = conversation_list
       }
-
-      // nạp lại store
-      conversationStore.conversation_list = conversation_list
     }
   }
   /**
@@ -435,7 +462,7 @@ class Main {
         post: 0,
       }
     }
-
+    console.log('999999999999999999999999999999999999999999')
     // reset data
     conversationStore.conversation_list = {}
 
@@ -574,7 +601,7 @@ class Main {
           // thêm khách hàng vào list khách hàng
           let temp: ConversationList = {}
           temp[data_key] = target_conversation
-
+          console.log('1010101010101010101010010110')
           conversationStore.conversation_list = {
             ...conversationStore.conversation_list,
             ...temp,
@@ -656,6 +683,7 @@ onMounted(() => {
 })
 // khi component bị xoá
 onUnmounted(() => {
+  console.log('11 11 111 11 111 1 11 1 1 1 1 ')
   // khi thoát khỏi component này thì xoá dữ liệu hội thoại hiện tại
   conversationStore.conversation_list = {}
 

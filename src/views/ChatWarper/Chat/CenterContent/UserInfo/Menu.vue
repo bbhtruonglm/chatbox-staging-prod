@@ -146,27 +146,26 @@ function toggleSpam() {
           index_of_spam_conversation.value = Object.keys(
             conversationStore.conversation_list
           ).indexOf(KEY)
-
+          console.log('44444444444444444444444444444444444444')
           // xoá khỏi danh sách
           delete conversationStore.conversation_list[KEY]
         }
         // nếu trong danh sách không tồn tại hội thoại thì hiện lên
         else {
+          console.log('555555555555555555555555555555555555555')
           // đổi danh sách hội thoại thành mảng
-          let conversation_array = map(conversationStore.conversation_list)
-
-          // thêm phần tử bị xoá vào đúng vị trí cũ của mảng
-          conversation_array.splice(
-            index_of_spam_conversation.value,
-            0,
-            conversationStore.select_conversation
-          )
-
-          // biến đổi mảng thành obj
-          conversationStore.conversation_list = keyBy(
-            conversation_array,
-            'data_key'
-          )
+          // let conversation_array = map(conversationStore.conversation_list)
+          // // thêm phần tử bị xoá vào đúng vị trí cũ của mảng
+          // conversation_array.splice(
+          //   index_of_spam_conversation.value,
+          //   0,
+          //   conversationStore.select_conversation
+          // )
+          // // biến đổi mảng thành obj
+          // conversationStore.conversation_list = keyBy(
+          //   conversation_array,
+          //   'data_key'
+          // )
         }
 
         cb()

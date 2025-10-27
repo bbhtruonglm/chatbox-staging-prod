@@ -155,7 +155,7 @@ class Main {
 
     // xóa câu trả lời của ai hiện tại
     conversationStore.select_conversation.ai_answer = ''
-
+    console.log('333333333333333333333333333333333333')
     // xóa câu trả lời ai trong danh sách hội thoại
     set(
       conversationStore.conversation_list,
@@ -232,6 +232,7 @@ class Main {
   async sendMessage() {
     /** đang gửi file thì không cho click nút gửi, tránh bị gửi lặp */
     if (messageStore.is_send_file) return
+    conversationStore.selected_client_id = client_id.value
 
     /** bắt buộc phải có id của trang và khách */
     if (!page_id.value || !client_id.value) return
@@ -241,13 +242,11 @@ class Main {
     const PAGE_ID = page_id.value
     /*id khách */
     const CLIENT_ID = client_id.value
+    /** Lưu selected client id */
     /**div input */
     const INPUT = input_chat_ref.value as HTMLDivElement
     /**nội dung tin nhắn */
     const TEXT = INPUT.innerText.trim()
-
-    /** Lưu selected client id */
-    conversationStore.selected_client_id = CLIENT_ID
 
     /** nếu có nội dung tin nhắn */
     if (TEXT) {

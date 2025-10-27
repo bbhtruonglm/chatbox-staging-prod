@@ -129,7 +129,8 @@ class Main {
       !$props.source?.data_key
     )
       return
-
+    // Đánh dấu đang chuyển hội thoại
+    conversationStore.is_switching_conversation = true
     /**dữ liệu hội thoại */
     const CONVERSATION: IConversationItem = $props.source
     /**hội thoại cũ */
@@ -143,12 +144,14 @@ class Main {
     const SPECIAL_PAGE_CONFIG = this.SERVICE_CALC_SPECIAL_PAGE_CONFIGS.exec()
 
     /**xóa các conversation có client_id trùng với client_id vừa phản hồi nếu có phải là case chưa phản hồi */
-
     if (
       conversationStore.option_filter_page_data.not_response_client &&
       conversationStore.selected_client_id &&
       conversationStore.selected_client_id !== CONVERSATION.fb_client_id
     ) {
+      /** Bắt đầu clear hội thoại */
+      conversationStore.is_clearing_conversation = true
+
       /** Tìm client trong danh sách hội thoại */
       const SELECTED_CLIENT_ID = conversationStore.selected_client_id
 
@@ -158,12 +161,26 @@ class Main {
       )
 
       /** Xóa từng key */
+      // forEach(KEYS_REMOVE, key => {
+      //   /** Xóa khỏi danh sách hội thoại */
+      //   delete conversationStore.conversation_list[key]
+      // })
+
+      /** Xóa từng key (theo cách reactive đúng của Vue 3) */
+      const OLD_LIST = { ...conversationStore.conversation_list }
       forEach(KEYS_REMOVE, key => {
-        /** Xóa khỏi danh sách hội thoại */
-        delete conversationStore.conversation_list[key]
+        delete OLD_LIST[key]
       })
 
-      console.log('Đã xóa các conversation có client_id:', SELECTED_CLIENT_ID)
+      /** đổi reference để Vue nhận thay đổi */
+      conversationStore.conversation_list = { ...OLD_LIST }
+      /** Reset selected_client_id  */
+      conversationStore.selected_client_id = undefined
+
+      /** Sau khi xóa xong, reset cờ sau 200ms (đủ thời gian chặn socket) */
+      setTimeout(() => {
+        conversationStore.is_clearing_conversation = false
+      }, 200)
     }
 
     /** đánh dấu hội thoại này sẽ bị đẩy xuống vào lần tới nếu */
@@ -178,24 +195,33 @@ class Main {
       /** gắn cờ */
       CONVERSATION.is_go_down = true
     }
+    /**
+     * 1. Check nếu không lọc chưa phản hồi
+     * 2. Nếu lọc phản hồi, phải là page phản hồi
+     */
+    if (
+      conversationStore.option_filter_page_data.not_response_client &&
+      conversationStore.selected_client_id &&
+      conversationStore.selected_client_id !== CONVERSATION.fb_client_id
+    ) {
+      /** nếu hội thoại trước đó được gắn cờ đi xuống */
+      if (OLD_CONVERSATION?.is_go_down && OLD_CONVERSATION?.data_key) {
+        /** xóa cờ */
+        delete OLD_CONVERSATION.is_go_down
 
-    /** nếu hội thoại trước đó được gắn cờ đi xuống */
-    if (OLD_CONVERSATION?.is_go_down && OLD_CONVERSATION?.data_key) {
-      /** xóa cờ */
-      delete OLD_CONVERSATION.is_go_down
+        /** xóa hội thoại khỏi vị trí cũ (trên đầu) */
+        delete conversationStore.conversation_list?.[OLD_CONVERSATION?.data_key]
 
-      /** xóa hội thoại khỏi vị trí cũ (trên đầu) */
-      delete conversationStore.conversation_list?.[OLD_CONVERSATION?.data_key]
+        /**index của hội thoại đầu tiên đã đọc */
+        const NEW_INDEX = this.findFirstReadMessageIndex()
 
-      /**index của hội thoại đầu tiên đã đọc */
-      const NEW_INDEX = this.findFirstReadMessageIndex()
-
-      /** đẩy hội thoại xuống vị trí mới (dưới các hội thoại chưa đọc) */
-      this.addItemToConversationsByIndex(
-        OLD_CONVERSATION?.data_key,
-        OLD_CONVERSATION,
-        NEW_INDEX
-      )
+        /** đẩy hội thoại xuống vị trí mới (dưới các hội thoại chưa đọc) */
+        this.addItemToConversationsByIndex(
+          OLD_CONVERSATION?.data_key,
+          OLD_CONVERSATION,
+          NEW_INDEX
+        )
+      }
     }
 
     /** logic chọn hội thoại mới */
@@ -216,6 +242,11 @@ class Main {
 
     /** đẩy id lên param */
     setParamChat($router, CONVERSATION?.fb_page_id, CONVERSATION?.fb_client_id)
+    /** Trạng thái đổi conversation */
+    setTimeout(() => {
+      conversationStore.is_switching_conversation = false
+      /** 300ms đủ để socket đẩy xong event cũ */
+    }, 300)
 
     /** lấy uid và thông tin khách hàng */
     this.triggerExtension()

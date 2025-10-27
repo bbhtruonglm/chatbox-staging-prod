@@ -208,7 +208,7 @@ watch(
     if (IS_TOGGLE_UNREAD) {
       /** hội thoại được chọn */
       const SELECTED = conversationStore.select_conversation
-
+      console.log('111111111111111111111111111111111111111111111111')
       /** danh sách hội thoại */
       const CONVERSATION_LIST = conversationStore.conversation_list
 

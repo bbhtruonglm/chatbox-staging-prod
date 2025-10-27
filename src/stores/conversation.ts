@@ -39,6 +39,10 @@ export const useConversationStore = defineStore('conversation_store', () => {
 
   /** id của page vừa phản hồi */
   const selected_client_id = ref<string>()
+  /** Trạng thái clear conversation */
+  const is_clearing_conversation = ref<boolean>(false)
+  /** Trạng thái thay đổi select conversation */
+  const is_switching_conversation = ref<boolean>(false)
 
   /** lấy dữ liệu lọc hội thoại */
   function getOptionFilterPageData(): FilterConversation {
@@ -208,5 +212,7 @@ export const useConversationStore = defineStore('conversation_store', () => {
     getPageById,
     isFindClientInfo,
     selected_client_id,
+    is_clearing_conversation,
+    is_switching_conversation,
   }
 })
