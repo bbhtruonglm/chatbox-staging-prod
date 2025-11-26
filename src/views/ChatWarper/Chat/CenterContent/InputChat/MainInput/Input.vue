@@ -28,9 +28,15 @@
         }}
       </template>
       <template v-else>
-        {{
+        <!-- {{
           $t("Gửi tin nhắn đến _. Sử dụng '/' để trả lời nhanh.", {
             name: conversationStore.select_conversation?.client_name,
+          })
+        }} -->
+        {{
+          $t("Trả lời từ _. Sử dụng '/' để trả lời nhanh.", {
+            // name: conversationStore.select_conversation?.client_name,
+            name: page_name,
           })
         }}
       </template>
@@ -38,7 +44,7 @@
   </div>
 </template>
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   useConversationStore,
@@ -67,7 +73,10 @@ import FacebookError from '@/components/Main/Dashboard/FacebookError.vue'
 
 import type { Cb, CbError } from '@/service/interface/function'
 import type { UploadFile } from '@/service/interface/app/album'
-import { N4SerivceAppConversation } from '@/utils/api/N4Service/Conversation'
+import {
+  N4SerivceAppConversation,
+  N4SerivceAppMessage,
+} from '@/utils/api/N4Service/Conversation'
 
 const { ToastReplyComment } = composableService()
 const { InputService } = inputComposableService()
@@ -81,6 +90,7 @@ const conversationStore = useConversationStore()
 const messageStore = useMessageStore()
 const commonStore = useCommonStore()
 const pageStore = usePageStore()
+const orgStore = useOrgStore()
 const { t: $t } = useI18n()
 const $delay = container.resolve(Delay)
 
@@ -106,6 +116,21 @@ const client_id = computed(
 const platform_type = computed(
   () => conversationStore.select_conversation?.platform_type
 )
+/** Render tên page */
+const page_name = computed(() => {
+  /** Lấy list page */
+  const LIST = orgStore.list_os || []
+  /** lấy page trùng với page hiện tại */
+  const PAGE = LIST.find(p => p.page_id === page_id.value)
+  /** Nếu k có page thì return '' */
+  if (!PAGE) return ''
+  /** Lấy tên gợi nhớ */
+  const ALIAS = PAGE.page_info?.alias
+  /** Lấy tên mặc định */
+  const NAME = PAGE.page_info?.name
+  /** Nếu có Tên gợi nhớ thì lấy tên gợi nhớ, không thì lấy tên mặc định */
+  return ALIAS && ALIAS.trim() !== '' ? ALIAS : NAME || ''
+})
 
 /**decorator xử lý khi phát sinh lỗi trả lời bình luận */
 const handleErrorReplyComment = error(
@@ -124,6 +149,7 @@ class Main {
    */
   constructor(
     private readonly API_POST = container.resolve(N4SerivceAppPost),
+    private readonly API_MESSAGE = container.resolve(N4SerivceAppMessage),
     private readonly SERVICE_INPUT = container.resolve(InputService),
     private readonly API_CONVERSATION = container.resolve(
       N4SerivceAppConversation
@@ -260,6 +286,9 @@ class Main {
           return this.privateReply(PAGE_ID, CLIENT_ID, TEXT)
       }
 
+      if (messageStore.reply_message?.type === 'REPLY_MESSAGE') {
+        return this.sendReplyMessage(PAGE_ID, CLIENT_ID, TEXT)
+      }
       /** gửi text */
       this.sendText(PAGE_ID, CLIENT_ID, TEXT, INPUT)
     }
@@ -346,6 +375,68 @@ class Main {
 
     /** xoá dữ liệu trả lời */
     messageStore.clearReplyComment()
+
+    scrollToBottomMessage(messageStore.list_message_id)
+  }
+  async sendReplyMessage(page_id: string, client_id: string, text: string) {
+    /** xoá dữ liệu trong input */
+    this.clearInputText()
+
+    /** xác thực dữ liệu */
+    if (!messageStore.reply_message?.message_id) return
+    /** Lấy list page */
+    const LIST = orgStore.list_os || []
+    /** lấy page trùng với page hiện tại */
+    const PAGE = LIST.find(p => p.page_id === page_id)
+
+    /** scroll xuống cuối trang */
+    scrollToBottomMessage(messageStore.list_message_id)
+
+    /**tạo id cho tin nhắn tạm */
+    const TEMP_ID = uniqueId(text)
+
+    /** thêm vào danh sách tin nhắn tạm */
+    messageStore.send_message_list.push({
+      text,
+      time: new Date().toISOString(),
+      temp_id: TEMP_ID,
+    })
+    /**gửi bình luận */
+    const RES = await this.API_MESSAGE.sendReplyMessage(
+      page_id,
+      client_id,
+      text,
+      messageStore.reply_message?.message_id || '',
+      PAGE?.org_id || ''
+    )
+
+    /** nếu có lỗi thì throw ra */
+    if (get(RES, 'error')) {
+      throw get(RES, 'error')
+    }
+
+    // /**bình luận được trả lời */
+    // const COMMENT =
+    //   messageStore.list_message?.[
+    //     messageStore.reply_comment?.message_index || 0
+    //   ]
+
+    // /** tiêm dữ liệu trả lời vào bình luận này */
+    // COMMENT?.reply_comments?.unshift({
+    //   comment_id: RES.id || '',
+    //   message: text,
+    //   from: { name: conversationStore.getPage()?.name },
+    //   createdAt: new Date().toISOString(),
+    // })
+
+    /** loại bỏ comment này khỏi danh sách */
+    // remove(messageStore.list_message, message => message._id === COMMENT._id)
+
+    /** thêm lại vào cuối */
+    // messageStore.list_message.push(COMMENT)
+
+    /** xoá dữ liệu trả lời */
+    messageStore.clearReplyMessage()
 
     scrollToBottomMessage(messageStore.list_message_id)
   }

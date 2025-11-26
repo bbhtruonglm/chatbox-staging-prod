@@ -206,6 +206,8 @@ export interface MessageInfo {
   snap_replay_message?: MessageInfo
   /**dữ liệu của AI */
   ai?: MessageAiData[]
+  /** sender id id người gửi*/
+  sender_id?: string
 }
 
 /**
@@ -213,7 +215,7 @@ export interface MessageInfo {
  * - REPLY: trả lời bình luận bình thường
  * - PRIVATE_REPLY: trả lời tin nhắn riêng
  */
-export type IReplyCommentType = 'REPLY' | 'PRIVATE_REPLY'
+export type IReplyCommentType = 'REPLY' | 'PRIVATE_REPLY' | 'REPLY_MESSAGE'
 
 /**dữ liệu cần thiết để trả lời bình luận */
 export interface IReplyComment {
@@ -229,6 +231,21 @@ export interface IReplyComment {
   is_loading?: boolean
   /**id bài viết */
   post_id?: string
+}
+/**dữ liệu cần thiết để trả lời bình luận */
+export interface IReplyMessage {
+  /**loại trả lời */
+  type?: IReplyCommentType
+  /**id của bình luận gốc */
+  root_message_id?: string
+  /**nội dung bình luận gốc */
+  root_message_content?: string
+  /**vị trí của tin nhắn chứa bình luận */
+  message_index?: number
+  /**có đang loading không */
+  is_loading?: boolean
+  /**id bài viết */
+  message_id?: string
 }
 
 /**dữ liệu AI của một phần tử */

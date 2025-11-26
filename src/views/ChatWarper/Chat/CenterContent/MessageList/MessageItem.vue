@@ -85,7 +85,39 @@
         !CHECK_SLOW_REPLY.isSlowReply() &&
         !CHECK_SLOW_REPLY.isSystemSlowReply()
       "
+      :group_client_name="message.group_client_name"
+      :platform_type="message.platform_type"
+      :fb_page_id="message.fb_page_id"
+      :sender_id="message.sender_id"
+      :message_type="message.message_type"
     />
+    <MessageReaction
+      v-if="
+        message_type === 'client' ||
+        message_type === 'page' ||
+        message_type === 'group'
+      "
+      :class="{
+        'right-0': message_type !== 'client',
+      }"
+      :fb_page_id="message.fb_page_id"
+      :sender_id="message.sender_id"
+      :message="message"
+    />
+    <MessageOtherAction
+      v-if="
+        message_type === 'client' ||
+        message_type === 'page' ||
+        message_type === 'group'
+      "
+      :class="{
+        'right-0': message_type !== 'client',
+      }"
+      :fb_page_id="message.fb_page_id"
+      :sender_id="message.sender_id"
+      :message="message"
+    />
+    <!-- :sender_id="message.sender_id" -->
   </div>
 </template>
 <script setup lang="ts">
@@ -114,6 +146,8 @@ import type {
 } from '@/service/interface/app/message'
 import { composableService } from '@/views/ChatWarper/Chat/CenterContent/MessageList/service'
 import { container } from 'tsyringe'
+import MessageReaction from './MessageReaction.vue'
+import MessageOtherAction from './MessageOtherAction.vue'
 
 const { MessageService } = composableService()
 
@@ -130,7 +164,7 @@ const $props = withDefaults(
   }>(),
   {}
 )
-
+console.log('$props.message', $props.message)
 /**tin nhắn này thuộc về dạng nào */
 const message_type = computed(() => $props.message?.message_type)
 /**kích thước của file đầu tiên */
