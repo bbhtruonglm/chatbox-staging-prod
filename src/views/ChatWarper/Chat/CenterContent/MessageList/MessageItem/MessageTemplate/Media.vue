@@ -112,13 +112,15 @@ const media_detail_ref = ref<InstanceType<typeof MediaDetail>>()
 /**loại nền tảng */
 const platform_type = computed(
   /** ưu tiên platform type của tin nhắn, nếu không có thì fallback platform type của hội thoại */
-  () => $props.message?.platform_type || conversationStore.select_conversation?.platform_type
+  () =>
+    $props.message?.platform_type ||
+    conversationStore.select_conversation?.platform_type
 )
 
 /**có sử dụng cnd mới không */
 function isUseNewCdn() {
   // các nền tảng sử dụng cdn mới
-  return ['FB_MESS', 'WEBSITE', 'FB_INSTAGRAM'].includes(
+  return ['FB_MESS', 'WEBSITE', 'FB_INSTAGRAM', 'TIKTOK'].includes(
     platform_type.value || ''
   )
 }
@@ -151,10 +153,9 @@ function initSize() {
 }
 /**đọc dữ liệu mới của tập tin */
 function getCdnUrl(): string | undefined {
-
   // TODO * Tạm fix cứng sau này sẽ xóa
   // nếu có chứa merchant.vn thì dùng link gốc
-  if($props.data_source?.audio?.url?.includes('merchant.vn'))
+  if ($props.data_source?.audio?.url?.includes('merchant.vn'))
     return $props.data_source?.audio?.url
 
   // nếu là slider thực thì dùng luôn
@@ -171,6 +172,9 @@ function getCdnUrl(): string | undefined {
 
   if (platform_type.value === 'FB_INSTAGRAM')
     return $cdn.igMessageMedia($props.message?.fb_page_id, TARGET_ID, 0)
+
+  if (platform_type.value === 'TIKTOK')
+    return $cdn.tiktokMessageMedia($props.message?.fb_page_id, TARGET_ID, 0)
 
   return $cdn.fbMessageMedia($props.message?.fb_page_id, TARGET_ID, 0)
 }

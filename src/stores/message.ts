@@ -2,7 +2,6 @@ import type {
   AttachmentCacheList,
   AttachmentInfo,
   IReplyComment,
-  IReplyMessage,
   MessageInfo,
   TempSendMessage,
 } from '@/service/interface/app/message'
@@ -11,7 +10,6 @@ import type { UploadFile } from '@/service/interface/app/album'
 import type ZaloAddMember from '@/views/ChatWarper/Chat/CenterContent/MessageList/MessageItem/PhoneAction/ZaloAddMember.vue'
 import type ZaloCreateGroup from '@/views/ChatWarper/Chat/CenterContent/MessageList/MessageItem/PhoneAction/ZaloCreateGroup.vue'
 import type ZaloPersonalModal from '@/views/ChatWarper/Chat/CenterContent/MessageList/MessageItem/PhoneAction/ZaloPersonalModal.vue'
-import type ZaloShareMessage from '@/views/ChatWarper/Chat/CenterContent/MessageList/MessageItem/PhoneAction/ZaloShareMessage.vue'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { remove } from 'lodash'
@@ -48,8 +46,6 @@ export const useMessageStore = defineStore('message_store', () => {
 
   /**dữ liệu cần thiết để trả lời bình luận */
   const reply_comment = ref<IReplyComment>()
-  /**dữ liệu cần thiết để trả lời tin nhắn*/
-  const reply_message = ref<IReplyMessage>()
 
   /** dữ liệu tin nhắn đang được chọn */
   const message_data = ref<MessageInfo>()
@@ -59,9 +55,6 @@ export const useMessageStore = defineStore('message_store', () => {
   /** Địa chỉ trỏ tới modal Tạo nhóm zalo */
   const modal_zalo_create_group_ref =
     ref<InstanceType<typeof ZaloCreateGroup>>()
-  /** Địa chỉ trỏ tới modal Tạo nhóm zalo */
-  const modal_zalo_share_message_ref =
-    ref<InstanceType<typeof ZaloShareMessage>>()
   /** Địa chỉ trỏ tới modal thêm thành viên vào nhóm zalo */
   const modal_zalo_add_member_ref = ref<InstanceType<typeof ZaloAddMember>>()
 
@@ -71,10 +64,6 @@ export const useMessageStore = defineStore('message_store', () => {
   /**xoá dữ liệu trả lời bình luận */
   function clearReplyComment() {
     reply_comment.value = undefined
-  }
-  /**xoá dữ liệu trả lời bình luận */
-  function clearReplyMessage() {
-    reply_message.value = undefined
   }
 
   /**cập nhật giá trị của tin nhắn tạm */
@@ -123,8 +112,5 @@ export const useMessageStore = defineStore('message_store', () => {
     clearReplyComment,
     isAiMessage,
     modal_zalo_add_member_ref,
-    reply_message,
-    modal_zalo_share_message_ref,
-    clearReplyMessage,
   }
 })
