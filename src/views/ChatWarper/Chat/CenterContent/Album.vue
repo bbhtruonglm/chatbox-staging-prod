@@ -148,21 +148,29 @@
               selected_category === 'NEW',
           }"
         >
-          <div
-            v-for="folder of folder_list"
-            @click="selectFolder(folder)"
-            :class="{ 'border-blue-700': folder._id === selected_folder?._id }"
-            class="w-full overflow-hidden relative cursor-pointer border-[3px] rounded-xl flex flex-col group items-center"
-          >
+          <template v-for="group in display_folder_groups" :key="'group-' + group.staff_id">
             <div
-              @click.stop="$event => openFolderMenu($event, folder)"
+              v-if="group.staff_id"
+              class="col-span-full font-semibold text-sm mt-2 text-slate-700"
+            >
+             <span class=""> {{ $t('v1.common.page') }}:</span> <span class="font-medium text-blue-700">{{ group.name || group.staff_id }}</span>
+            </div>
+            <div
+              v-for="folder of group.folders"
+              :key="folder._id"
+              @click="selectFolder(folder)"
+              :class="{ 'border-blue-700': folder._id === selected_folder?._id }"
+              class="w-full h-[80px] overflow-hidden relative cursor-pointer border-[3px] rounded-xl flex flex-col group items-center"
+            >
+              <div
+                @click.stop="$event => openFolderMenu($event, folder)"
               class="absolute top-1 right-1 px-0.5 bg-slate-200 border border-slate-500 rounded-md hidden group-hover:block"
             >
               <DotIcon class="w-4 h-4 text-slate-500" />
             </div>
             <FolderIcon class="w-12 h-12 text-slate-700" />
             <div
-              class="truncate w-full text-center text-xs font-medium h-6 flex-shrink-0 px-2"
+              class="w-full text-center flex-shrink-0 px-2 pb-1"
             >
               <input
                 :id="`edit-folder-title-${folder._id}`"
@@ -175,10 +183,23 @@
                 class="border w-full rounded text-center px-2 bg-slate-50 py-0.5"
               />
               <template v-else>
-                {{ folder.title }}
+                <div class="truncate text-[10px] text-gray-400">
+                  {{
+                    folder.updatedAt
+                      ? $date_handle.format(
+                          folder.updatedAt,
+                          'HH:mm dd/MM/yyyy'
+                        )
+                      : ''
+                  }}
+                </div>
+                <div class="truncate text-xs font-medium">
+                  {{ folder.title }}
+                </div>
               </template>
             </div>
           </div>
+          </template>
           <div
             v-for="file of file_list"
             @click="selectFile(file)"
@@ -320,6 +341,8 @@
 </template>
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue'
+import { container } from 'tsyringe'
+import { DateHandle } from '@/utils/helper/DateHandle'
 import { eachOfLimit, waterfall } from 'async'
 import {
   read_file_album,
@@ -331,7 +354,7 @@ import {
   create_folder_album,
 } from '@/service/api/chatbox/n6-static'
 import { useConversationStore, useOrgStore } from '@/stores'
-import { confirm, toast, toastError } from '@/service/helper/alert'
+import { confirm, modal_input, toast, toastError } from '@/service/helper/alert'
 import { validateFileSize } from '@/service/helper/file'
 import { useI18n } from 'vue-i18n'
 import {
@@ -373,6 +396,11 @@ import Pagination from './Pagination.vue'
 import { normalizeFileName, normalizePageIds } from '@/utils/helper/Validate'
 import { resizeImage } from '@/utils/helper/ResizeImage/image-resize.main'
 
+import {usePageStore } from '@/stores'
+
+
+
+const pageStore = usePageStore()
 /**các giá tị của danh mục */
 type CategoryType = 'NEW' | 'FOLDER'
 
@@ -383,6 +411,8 @@ const $t = useI18n().t
 const conversationStore = useConversationStore()
 /** Thoong tin org trong store*/
 const orgStore = useOrgStore()
+
+const $date_handle = container.resolve(DateHandle)
 
 /**cache câu trả lời, hạnc chế gọi API liên tục mỗi lần click */
 const CACHE_LIST_ALBUM = new Map<string, any[]>()
@@ -489,6 +519,34 @@ const is_done = ref(false)
 const skip = ref(0)
 /**thư mục được chọn để cài đặt */
 const selected_folder = ref<FolderInfo>()
+
+/** Danh sách thư mục hiển thị (đã xử lý gom nhóm theo staff_id) */
+const display_folder_groups = computed(() => {
+  const lst = folder_list.value || []
+  // Kiểm tra xem trên ds hiện tại có nhiều fb_page_id không
+  const has_different_staff = new Set(lst.map(i => i.fb_page_id).filter(Boolean)).size > 1
+  
+  // Nếu tất cả thư mục thuộc cùng một trang, trả về một nhóm duy nhất không có tiêu đề để hiển thị như bình thường
+  if (!has_different_staff) {
+    return [{ staff_id: '', name: '', folders: lst }]
+  }
+  
+  // Khởi tạo Map để gom nhóm các thư mục theo ID trang (fb_page_id)
+  const groups = new Map<string, FolderInfo[]>()
+  lst.forEach(f => {
+    // Lấy ID trang, nếu không có thì xếp vào nhóm 'Khác'
+    const g_id = f.fb_page_id || 'Khác'
+    if (!groups.has(g_id)) groups.set(g_id, [])
+    groups.get(g_id)!.push(f)
+  })
+  
+  // Chuyển đổi Map thành mảng các đối tượng nhóm để hiển thị lên giao diện kèm theo tên trang từ store
+  return Array.from(groups.entries()).map(([g_id, folders]) => ({
+    staff_id: g_id,
+    name: pageStore.all_page_list[g_id]?.page?.name || g_id,
+    folders
+  }))
+})
 
 /**id trang đang được chọn */
 const page_id = ref<string>('')
@@ -944,29 +1002,40 @@ function confirmDeleteFile() {
 
 /**
  * Tạo mới một thư mục (album) cho trang Facebook đang được chọn.
+ * Hiển thị popup nhập tên thư mục trước khi tạo.
  */
 function createFolder(): void {
-  /** Bật cờ đang chạy */
-  is_loading.value = true
+  /** Hiện popup nhập tên thư mục */
+  modal_input(
+    $t('v1.view.main.dashboard.chat.album.folder_new_name'),
+    $t('v1.view.main.dashboard.chat.album.folder_new_name'),
+    (is_cancel, folder_title) => {
+      /** Nếu cancel hoặc không nhập tên thì thoát */
+      if (is_cancel || !folder_title?.trim()) return
 
-  /** Xác định page_id hợp lệ */
-  const NEW_PAGE_ID = resolvePageIdForAlbum()
+      /** Bật cờ đang chạy */
+      is_loading.value = true
 
-  /** Gọi API tạo mới thư mục */
-  create_folder_album(
-    {
-      page_id: NEW_PAGE_ID,
-      title: $t('v1.view.main.dashboard.chat.album.folder_new_name'),
-    },
-    (e, r) => {
-      /** Tắt cờ đang chạy */
-      is_loading.value = false
+      /** Xác định page_id hợp lệ */
+      const NEW_PAGE_ID = resolvePageIdForAlbum()
 
-      /** Reset dữ liệu và gọi lại danh sách */
-      folder_list.value = []
-      skip.value = 0
-      is_done.value = false
-      getFolders()
+      /** Gọi API tạo mới thư mục */
+      create_folder_album(
+        {
+          page_id: NEW_PAGE_ID,
+          title: folder_title.trim(),
+        },
+        (e, r) => {
+          /** Tắt cờ đang chạy */
+          is_loading.value = false
+
+          /** Reset dữ liệu và gọi lại danh sách */
+          folder_list.value = []
+          skip.value = 0
+          is_done.value = false
+          getFolders()
+        }
+      )
     }
   )
 }

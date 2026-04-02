@@ -1,3 +1,4 @@
+import { undo_message } from './../../api/chatbox/n4-service';
 import type { FileTypeInfo } from '@/service/interface/app/message'
 
 /**dữ liệu đánh đấu file thuộc về trang nào và thư mục nào */
@@ -78,6 +79,14 @@ export interface FolderInfo {
   is_edit?: boolean
   /** id page */
   fb_page_id: string
+  /** ngày cập nhật */
+  updatedAt: string
+  /** id staff */
+  fb_staff_id?: string
+  /** cờ đánh dấu đây là group folder (hiển thị UI) */
+  is_group?: boolean
+  /** danh sách folder con nếu là group */
+  children?: FolderInfo[]
 }
 /**cập nhật dữ liệu thư mục */
 export interface UpdateFolderInput {
