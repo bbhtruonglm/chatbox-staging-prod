@@ -77,15 +77,6 @@
             </template>
           </Item>
           <Item
-            v-if="orgStore.lastReset()"
-            :title="$t('v1.view.main.dashboard.org.pay.next_reset')"
-          >
-            <span class="">
-              {{ orgStore.nextReset() }}
-            </span>
-          </Item>
-          
-          <Item
             v-if="orgStore.isFreePack()"
             :title="$t('v1.view.main.dashboard.org.pay.new_client')"
           >
