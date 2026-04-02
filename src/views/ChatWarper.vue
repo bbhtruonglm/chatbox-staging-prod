@@ -14,7 +14,7 @@
     <Menu />
     <Layout>
       <template #left>
-        <LeftBar />
+        <LeftBar :is_loading="is_init_loading" />
       </template>
       <template #center>
         <div class="flex gap-2 h-full">
@@ -22,8 +22,8 @@
         </div>
       </template>
       <template #right>
-        <RightBar :is_loading="is_init_loading || should_show_skeleton" />
-      </template>
+        <RightBar :is_loading="should_show_skeleton" />
+        </template>
     </Layout>
 
     <AlertWarning
@@ -34,25 +34,16 @@
       ref="ref_alert_reach_quota"
     />
     <AlertAccountLimitReached ref="ref_alert_reach_limit" />
-    <DisconnectedPageWarning
-      ref="disconnect_warning_modal_ref"
-      @continue="closeDisconnectWarning()"
-      @reconnect="openDisconnectConnectPage()"
-    />
-    <ConnectPage ref="connect_page_ref" />
   </div>
 </template>
 <script setup lang="ts">
-import { dispatchEventBus } from '@/event'
 import { read_os } from '@/service/api/chatbox/billing'
-import {
-  update_info_conversation
-} from '@/service/api/chatbox/n4-service'
+import { update_info_conversation } from '@/service/api/chatbox/n4-service'
 import { create_token_app_installed } from '@/service/api/chatbox/n5-app'
 import {
   getCurrentOrgInfo,
   getPageInfo,
-  getPageWidget
+  getPageWidget,
 } from '@/service/function'
 import {
   listen as ext_listen,
@@ -62,7 +53,6 @@ import {
 import {
   useChatbotUserStore,
   useCommonStore,
-  useConnectPageStore,
   useConversationStore,
   useExtensionStore,
   useOrgStore,
@@ -71,52 +61,45 @@ import {
 import { N4SerivceAppPage } from '@/utils/api/N4Service/Page'
 import { N5AppV1AppApp } from '@/utils/api/N5App'
 import { error } from '@/utils/decorator/Error'
+import { loading } from '@/utils/decorator/Loading'
 import { Toast } from '@/utils/helper/Alert/Toast'
 import { Delay } from '@/utils/helper/Delay'
-import { RealtimeSocket } from '@/utils/helper/Socket'
+import { RealtimeSocket, Socket } from '@/utils/helper/Socket'
 import { User } from '@/utils/helper/User'
 import { initRequireData, useDropFile } from '@/views/composable'
-import {
-  difference,
-  intersection,
-  keys,
-  map,
-  size
-} from 'lodash'
+import { debounce, difference, intersection, keys, map, size } from 'lodash'
+import { storeToRefs } from 'pinia'
 import { container } from 'tsyringe'
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { onMounted, onUnmounted, ref, toRef, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
+import { dispatchEventBus } from '@/event'
 
 import AlertAccountLimitReached from '@/components/AlertModal/AlertAccountLimitReached.vue'
-import DisconnectedPageWarning from '@/components/AlertModal/DisconnectedPageWarning.vue'
 
-import BellSound from '@/assets/sound/notification-sound.mp3'
-import AlertWarning from '@/components/AlertModal/AlertWarning.vue'
 import HotAlert from '@/components/HotAlert.vue'
 import CenterContent from '@/views/ChatWarper/Chat/CenterContent.vue'
 import LeftBar from '@/views/ChatWarper/Chat/LeftBar.vue'
 import RightBar from '@/views/ChatWarper/Chat/RightBar.vue'
-import ConnectPage from '@/views/Dashboard/ConnectPage.vue'
 import Layout from '@/views/ChatWarper/Layout.vue'
 import Menu from '@/views/ChatWarper/Menu.vue'
 
-import type { OwnerShipInfo } from '@/service/interface/app/billing'
+import BellSound from '@/assets/sound/notification-sound.mp3'
+
 import type { SocketEvent } from '@/service/interface/app/common'
-import type {
-  ConversationInfo
-} from '@/service/interface/app/conversation'
+import type { ConversationInfo } from '@/service/interface/app/conversation'
 import type { MessageInfo } from '@/service/interface/app/message'
 import type { FacebookCommentPost } from '@/service/interface/app/post'
 import type { StaffSocket } from '@/service/interface/app/staff'
 import type { IAlert } from '@/utils/helper/Alert/type'
+import type { OwnerShipInfo } from '@/service/interface/app/billing'
+import AlertWarning from '@/components/AlertModal/AlertWarning.vue'
 
 /** store */
 const pageStore = usePageStore()
 const chatbotUserStore = useChatbotUserStore()
 const conversationStore = useConversationStore()
 const commonStore = useCommonStore()
-const connectPageStore = useConnectPageStore()
 const extensionStore = useExtensionStore()
 const orgStore = useOrgStore()
 
@@ -135,21 +118,6 @@ const { onDropFile } = useDropFile()
 const is_focus_chat_tab = ref(true)
 /**ref modal cảnh báo hết gói */
 const ref_alert_reach_quota = ref<InstanceType<typeof AlertWarning>>()
-/** ref popup cảnh báo quyền truy cập sau khi đã vào bên trong màn chat */
-const disconnect_warning_modal_ref =
-  ref<InstanceType<typeof DisconnectedPageWarning>>()
-/** ref ConnectPage dùng cho nút "Cấp lại quyền" trong popup cảnh báo */
-const connect_page_ref = ref<InstanceType<typeof ConnectPage>>()
-/**
- * Thông tin của page đang bị mất quyền truy cập.
- * Dữ liệu này được lấy từ store tạm rồi giữ cục bộ trong ChatWarper
- * để phục vụ thao tác đóng popup hoặc mở lại ConnectPage.
- */
-const disconnect_warning_info = ref<{
-  page_id?: string
-  org_id?: string
-  page_type?: string
-}>()
 
 /**ref modal cảnh báo hết giới hạn gói */
 const ref_alert_reach_limit =
@@ -164,27 +132,16 @@ const is_init_loading = ref(true)
 /** Có nên hiển thị skeleton loading cho center va right bar ko */
 const should_show_skeleton = computed(() => {
   return (
+    is_init_loading.value ||
     conversationStore.is_loading_list ||
     (size(conversationStore.conversation_list) > 0 &&
       !conversationStore.select_conversation)
   )
 })
 
-// lắng nghe cả is_init_loading để biết khi thông tin page được call thành công => mới có list widget => token widget
 watch(
-  () => [conversationStore.select_conversation, is_init_loading.value],
-  (
-    [new_conversation, new_is_init_loading],
-    [old_conversation, old_is_init_loading],
-  ) => {
-    // nếu vẫn đang loading init dữ liệu thì thôi
-    if (new_is_init_loading) return
-    // nếu có rồi
-    getTokenOfWidget(
-      new_conversation as ConversationInfo,
-      old_conversation as ConversationInfo,
-    )
-  },
+  () => conversationStore.select_conversation,
+  (new_val, old_val) => getTokenOfWidget(new_val, old_val),
 )
 
 onMounted(() => {
@@ -238,58 +195,6 @@ watch(
 /**chuyển đến trang dashboard */
 function goDashboard() {
   $router.push('/dashboard')
-}
-/** đóng popup cảnh báo page mất quyền truy cập */
-function closeDisconnectWarning() {
-  disconnect_warning_modal_ref.value?.toggleModal()
-  disconnect_warning_info.value = undefined
-}
-
-/**
- * Mở giao diện để kết nối lại trang đang bị mất quyền truy cập.
- * Tại sao: Giúp người dùng nhanh chóng thực hiện cấp lại quyền truy cập cho trang mà không cần tìm kiếm thủ công.
- */
-function openDisconnectConnectPage() {
-  // đóng modal cảnh báo hiện tại
-  disconnect_warning_modal_ref.value?.toggleModal()
-
-  // tự động chuyển về đúng tổ chức của trang bị lỗi để thực hiện kết nối lại
-  if (disconnect_warning_info.value?.org_id) {
-    orgStore.selected_org_id = disconnect_warning_info.value.org_id
-    orgStore.selected_org_info = orgStore.list_org?.find(
-      org => org.org_id === orgStore.selected_org_id
-    )
-    orgStore.is_selected_all_org = false
-  }
-
-  // hiển thị menu và mở modal kết nối tương ứng với loại trang (Facebook, Zalo,...)
-  connectPageStore.is_hidden_menu = false
-  connect_page_ref.value?.toggleModal(disconnect_warning_info.value?.page_type)
-
-  // xóa thông tin cảnh báo tạm sau khi đã điều hướng xong
-  disconnect_warning_info.value = undefined
-}
-
-/**
- * Kiểm tra xem có yêu cầu hiển thị cảnh báo trang mất kết nối hay không.
- * Tại sao: Khi người dùng chọn trang từ Dashboard, nếu trang đó lỗi, hệ thống cần thông báo ngay khi vào màn hình chat.
- */
-function showDisconnectWarningIfNeeded() {
-  // kiểm tra thông tin cảnh báo đang được treo trong store
-  const pending = pageStore.pending_disconnected_page_warning
-  if (!pending?.page_id) return
-
-  // lấy dữ liệu trang thực tế để kiểm tra lại trạng thái
-  const page = pageStore.selected_page_list_info?.[pending.page_id]?.page
-  // xóa cảnh báo chờ trong store để tránh hiện lại nhiều lần
-  pageStore.clearPendingDisconnectedPageWarning()
-
-  // nếu trang vẫn kết nối bình thường thì dừng lại
-  if (!page?.is_disconnected) return
-
-  // lưu thông tin trang lỗi và bật popup cảnh báo cho người dùng
-  disconnect_warning_info.value = pending
-  disconnect_warning_modal_ref.value?.toggleModal()
 }
 /**kiểm tra xem người dùng có đang ở trong tab chatbox không */
 function checkFocusChatTab($event: FocusEvent) {
@@ -704,9 +609,6 @@ function validateConversation(
   )
     return
 
-  /** nếu conversation từ socket đã tồn tại trong danh sách thì bỏ qua bộ lọc, cho phép update */
-  const DATA_KEY_LABEL = `${conversation.fb_page_id}_${conversation.fb_client_id}`
-
   /** lọc nhãn hoặc */
   if (
     conversationStore.option_filter_page_data.label_id &&
@@ -714,8 +616,7 @@ function validateConversation(
     !intersection(
       conversationStore.option_filter_page_data.label_id,
       conversation.label_id,
-    ).length &&
-    !conversationStore.conversation_list?.[DATA_KEY_LABEL]
+    ).length
   )
     return
 
@@ -728,8 +629,7 @@ function validateConversation(
       difference(
         conversationStore.option_filter_page_data.label_id,
         conversation.label_id,
-      ).length) &&
-    !conversationStore.conversation_list?.[DATA_KEY_LABEL]
+      ).length)
   )
     return
 
@@ -739,7 +639,7 @@ function validateConversation(
     intersection(
       conversationStore.option_filter_page_data.not_label_id,
       conversation.label_id,
-    ).length && !conversationStore.conversation_list?.[DATA_KEY_LABEL]
+    ).length
   )
     return
 
@@ -825,11 +725,6 @@ class Main {
 
       /**  lưu dữ liệu trang đã chọn*/
       pageStore.selected_page_list_info = pages
-      /**
-       * Chỉ sau khi màn chat đã có dữ liệu page thực tế mới quyết định hiển thị popup cảnh báo.
-       * Cách làm này giúp popup xuất hiện "bên trong page" thay vì bật ngay ở Dashboard.
-       */
-      showDisconnectWarningIfNeeded()
 
       /**  lưu dữ liệu nhân viên của các trang đã chọn*/
       pageStore.selected_pages_staffs = User.getUsersInfo(pages)
