@@ -5,7 +5,6 @@ import type {
   QueryConversationResponse,
 } from '@/service/interface/app/conversation'
 import { N4Serivce } from '@/utils/api/N4Serivce'
-import { keyBy } from 'lodash'
 import { singleton } from 'tsyringe'
 
 /**
@@ -98,7 +97,7 @@ export class N4SerivceAppConversation extends N4Serivce {
     after?: number[]
   ): Promise<QueryConversationResponse> {
     // gọi api
-    const RES = await this.post('read_conversation', {
+    return this.post('read_conversation', {
       page_id: page_ids,
       org_id,
       limit,
@@ -106,13 +105,6 @@ export class N4SerivceAppConversation extends N4Serivce {
       sort,
       ...filter,
     })
-
-    // format lại thành object
-    RES.conversation = keyBy(
-      RES.result,
-      n => `${n.fb_page_id}_${n.fb_client_id}`,
-    )    
-    return RES
   }
   /**
    * lấy dữ liệu 1 hội thoại
