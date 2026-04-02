@@ -38,34 +38,31 @@
           "
           v-if="total_over_label"
           @click="$main.expandList"
-          class="rounded border border-slate-500 text-slate-700 w-6 h-6 flex-shrink-0 justify-center items-center flex text-xs font-semibold"
+          class="rounded border border-slate-500 text-slate-700 w-7 h-6 flex-shrink-0 justify-center items-center flex text-xs font-semibold"
         >
           <ArrowDownIcon
             v-if="is_expand_label"
             class="w-2.5 h-2.5"
           />
-          <span v-else> +{{ total_over_label }} </span>
+          <span v-else>{{ display_total_over_label }}</span>
         </button>
       </div>
     </div>
   </div>
 </template>
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
-import { map, partition, sortBy } from 'lodash'
-import { useCommonStore, useConversationStore, useOrgStore } from '@/stores'
+import { computed, ref, watch, nextTick } from 'vue'
+import { sortBy, values } from 'lodash'
+import { useCommonStore, useConversationStore, usePageStore } from '@/stores'
 import { loading } from '@/utils/decorator/Loading'
 import { error } from '@/utils/decorator/Error'
 import { container } from 'tsyringe'
 import { Toast } from '@/utils/helper/Alert/Toast'
 import { N4SerivceAppOneConversation } from '@/utils/api/N4Service/Conversation'
-import { nextTick } from 'async'
-import { ExternalSite } from '@/utils/helper/ExternalSite'
 
 import Loading from '@/components/Loading.vue'
 import LabelItem from '@/views/ChatWarper/Chat/CenterContent/InputChat/ListLabel/LabelItem.vue'
 
-import CogBoldIcon from '@/components/Icons/CogBold.vue'
 import ArrowDownIcon from '@/components/Icons/ArrowDown.vue'
 
 import type { ICustomLabel } from './ListLabel/type'
@@ -77,8 +74,7 @@ import {
 const commonStore = useCommonStore()
 const conversationStore = useConversationStore()
 const $toast = container.resolve(Toast)
-const orgStore = useOrgStore()
-const $external_site = container.resolve(ExternalSite)
+const pageStore = usePageStore()
 
 /**tham chiếu đến div danh sách nhãn */
 const ref_labels = ref<HTMLDivElement>()
@@ -90,6 +86,24 @@ const is_loading_label = ref(false)
 const labels = ref<ICustomLabel[]>([])
 /**tổng số nhãn bị ẩn */
 const total_over_label = ref<number>()
+/**đánh dấu lượt đếm hidden label mới nhất để tránh race condition khi reload */
+const count_hidden_request_id = ref(0)
+/** text hiển thị cho số lượng nhãn bị ẩn */
+const display_total_over_label = computed(() => {
+  if (!total_over_label.value) return ''
+
+  return total_over_label.value > 99 ? '99+' : `+${total_over_label.value}`
+})
+/** danh sách nhãn của page hiện tại */
+const current_page_labels = computed(() => {
+  const PAGE_ID = conversationStore.select_conversation?.fb_page_id || ''
+
+  return pageStore.selected_page_list_info?.[PAGE_ID]?.label_list
+})
+/** chữ ký nhãn đang active để tránh watch lặp do đổi reference mảng */
+const active_label_signature = computed(() => {
+  return [...(conversationStore.getActiveLabelIds() || [])].sort().join('|')
+})
 
 class Main {
   /**
@@ -114,28 +128,49 @@ class Main {
   }
   /**đếm số nhãn bị ẩn bởi css flex overflow-hidden  */
   private async countHiddenLabel(): Promise<void> {
-    total_over_label.value = await this.SERVICE_COUNT_HIDDEN_ITEM.exec(
+    const REQUEST_ID = ++count_hidden_request_id.value
+
+    // Chờ danh sách nhãn render xong rồi mới bắt đầu đo, tránh đo khi DOM chưa sẵn sàng.
+    await nextTick()
+
+    // Nếu không có nhãn hoặc container chưa có width thật thì coi như chưa có nhãn nào bị ẩn.
+    if (!labels.value.length || !ref_labels.value?.clientWidth) {
+      if (REQUEST_ID === count_hidden_request_id.value)
+        total_over_label.value = undefined
+      return
+    }
+
+    const TOTAL_OVER_LABEL = await this.SERVICE_COUNT_HIDDEN_ITEM.exec(
       'button',
       ref_labels.value
     )
+
+    // Chỉ lượt đếm mới nhất mới được phép cập nhật state, tránh kết quả cũ ghi đè khi reload.
+    if (REQUEST_ID !== count_hidden_request_id.value) return
+
+    total_over_label.value = TOTAL_OVER_LABEL
   }
 
   /**khởi tạo danh sách nhãn của trang của hội thoại đang chọn */
   getLabels(): void {
     /**dữ liệu nhãn gốc của trang */
-    const MAP_LABELS = conversationStore.getLabels()
+    const MAP_LABELS = conversationStore.getLabels() || {}
 
-    /** tiêm trạng thái nhãn được chọn */
-    map(MAP_LABELS, (label: ICustomLabel) => {
-      /** đánh dấu các nhãn đã được chọn */
-      label.is_active = this.isActiveLabel(label._id)
-
-      /** chuyển description sang dạng số */
-      label.description = Number(label?.description)
-    })
+    /** tạo dữ liệu render riêng để tránh mutate store */
+    const DISPLAY_LABELS = values(MAP_LABELS).map(
+      (label): ICustomLabel => {
+      return {
+        ...label,
+        /** đánh dấu các nhãn đã được chọn */
+        is_active: this.isActiveLabel(label._id),
+        /** chuyển description sang dạng số */
+        description: Number(label?.description),
+      }
+      }
+    )
 
     /** sắp xếp */
-    labels.value = sortBy(MAP_LABELS, ['is_active', 'index', 'title'])
+    labels.value = sortBy(DISPLAY_LABELS, ['is_active', 'index', 'title'])
 
     /** đếm số nhãn bị ẩn */
     this.countHiddenLabel()
@@ -172,18 +207,15 @@ class Main {
 }
 const $main = new Main()
 
-/** lấy danh sách nhãn khi component được render */
-onMounted(() => $main.getLabels())
-
-/** lấy danh sách nhãn khi thay đổi khách hàng */
+/** lấy danh sách nhãn khi đổi hội thoại, đổi label của hội thoại, hoặc page hiện tại thay label */
 watch(
-  () => conversationStore.select_conversation?.fb_client_id,
-  () => $main.getLabels()
-)
-/** lấy danh sách nhãn khi có thay đổi nhãn ở máy khác */
-watch(
-  () => conversationStore.select_conversation?.label_id,
-  () => $main.getLabels()
+  [
+    () => conversationStore.select_conversation?.data_key || '',
+    () => current_page_labels.value,
+    () => active_label_signature.value,
+  ],
+  () => $main.getLabels(),
+  { immediate: true },
 )
 
 /** lắng nghe trạng thái phím tắt */
