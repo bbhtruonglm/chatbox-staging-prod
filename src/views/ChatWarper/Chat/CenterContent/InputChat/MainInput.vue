@@ -1,6 +1,6 @@
 <template>
+  <!-- v-if="!is_disable_input" -->
   <div
-    v-if="!is_disable_input"
     id="main_input_chat"
     :class="{
       'pr-3': isVisibleSendBtn(),
@@ -37,8 +37,10 @@
         </Dropdown>
 
         <Input
+          :is_over_time="is_disable_input"
           ref="input_chat_ref"
-          @keyup="quick_answer_ref?.handleChatValue"
+          :mention_ref="mention_ref"
+          @keyup="onInputKeyup"
           :class="{
             'animate-fast-pulse': messageStore.is_input_run_ai,
           }"
@@ -62,13 +64,13 @@
         />
       </div>
       <QuickAnswer ref="quick_answer_ref" />
+      <Mention ref="mention_ref" />
     </div>
   </div>
-  <div
+  <!-- <div
     v-else
     class="flex gap-2 text-sm py-2 px-4 rounded-full bg-slate-50 text-slate-400 items-center cursor-not-allowed"
   >
-    <!-- <SparklesIcon class="size-5" /> -->
     <ClipIcon class="size-5" />
     <p class="w-full text-slate-700 py-1.5 px-1">
       <i18n-t keypath="Đã quá 7 ngày kể từ tin nhắn cuối cùng. _">
@@ -78,7 +80,7 @@
       </i18n-t>
     </p>
     <SlashQuareIcon class="size-5" />
-  </div>
+  </div> -->
 </template>
 <script setup lang="ts">
 import 'emoji-picker-element'
@@ -89,6 +91,7 @@ import { IS_VISIBLE_SEND_BTN_FUNCT } from '@/views/ChatWarper/Chat/CenterContent
 
 import AiAnswer from '@/views/ChatWarper/Chat/CenterContent/InputChat/MainInput/AiAnswer.vue'
 import QuickAnswer from '@/views/ChatWarper/Chat/CenterContent/InputChat/MainInput/QuickAnswer.vue'
+import Mention from '@/views/ChatWarper/Chat/CenterContent/InputChat/MainInput/Mention.vue'
 import AiManager from '@/views/ChatWarper/Chat/CenterContent/InputChat/MainInput/AiManager.vue'
 import AttachmentMenu from '@/views/ChatWarper/Chat/CenterContent/InputChat/MainInput/AttachmentMenu.vue'
 import Input from '@/views/ChatWarper/Chat/CenterContent/InputChat/MainInput/Input.vue'
@@ -111,6 +114,8 @@ const emoji_ref = ref<InstanceType<typeof Dropdown>>()
 const input_chat_ref = ref<InstanceType<typeof Input>>()
 /**ref của modal chọn câu trả lời nhanh */
 const quick_answer_ref = ref<InstanceType<typeof QuickAnswer>>()
+/**ref của modal nhắc đến người dùng */
+const mention_ref = ref<InstanceType<typeof Mention>>()
 
 /**có đang tạo câu trả lời không */
 const is_loading_ai_answer = ref<boolean>(false)
@@ -200,8 +205,24 @@ function placeCaretAtEnd(el: HTMLElement) {
   }
 }
 
+/**hàm xử lý sự kiện keyup của input */
+function onInputKeyup($event: KeyboardEvent) {
+  quick_answer_ref.value?.handleChatValue($event)
+  mention_ref.value?.handleChatValue($event)
+}
+
 // xuất hàm cho component con xử dụng
 provide(IS_VISIBLE_SEND_BTN_FUNCT, isVisibleSendBtn)
+
+// provide main_input_ref để Input.vue có thể truy cập mention_ref
+provide('main_input_ref', {
+  get mention_ref() {
+    return mention_ref.value
+  },
+})
+
+// xuất mention_ref để Input.vue có thể sử dụng
+defineExpose({ mention_ref })
 </script>
 <style scoped lang="scss">
 .animate-fast-pulse {

@@ -15,6 +15,7 @@ import type {
   QueryMessage,
   SendMesageInput,
   SendMesageInputHorizontal,
+  IContextUndoMessage,
 } from '@/service/interface/app/message'
 import type {
   QueryConversationInput,
@@ -399,11 +400,22 @@ export const toggle_spam_conversation = (
     proceed
   )
 
+  
 /**gửi tin nhắn đến khách hàng */
 export const send_message = (body: SendMesageInputHorizontal, proceed: Cb) =>
   chatbox(
     {
       uri: `${$env.host.n4_service_v2}/app/message/send_message`,
+      body,
+    },
+    proceed
+  )
+
+/**hoàn tác tin nhắn */
+export const undo_message = (body: IContextUndoMessage, proceed: Cb) =>
+  chatbox(
+    {
+      uri: `${$env.host.n4_service_v2}/app/message/undo_message`,
       body,
     },
     proceed

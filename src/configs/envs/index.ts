@@ -13,6 +13,7 @@ const ENV: IEnv = {
     n5_app_v1: import.meta.env.VITE_HOST_N5_APP_V1,
     n5_app_v2: import.meta.env.VITE_HOST_N5_APP_V2,
     n6_static: import.meta.env.VITE_HOST_N6_STATIC,
+    n6_static_v2: import.meta.env.VITE_HOST_N6_STATIC_V2,
     n9_analytic_v2: import.meta.env.VITE_HOST_N9_ANALYTIC_V2,
     billing: import.meta.env.VITE_HOST_BILLING,
     ai: import.meta.env.VITE_HOST_AI,
@@ -28,6 +29,7 @@ const ENV: IEnv = {
     merchant: {
       contact: import.meta.env.VITE_HOST_MERCHANT_CONTACT,
     },
+    proxy_video: import.meta.env.VITE_HOST_PROXY_VIDEO,
   },
   external_link: {
     setting: import.meta.env.VITE_EXTERNAL_SETTING,

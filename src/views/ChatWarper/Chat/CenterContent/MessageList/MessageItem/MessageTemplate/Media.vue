@@ -28,11 +28,7 @@
         preload="metadata"
       >
         <source
-          :src="
-            isUseNewCdn()
-              ? getCdnUrl() || data_source?.video?.url
-              : data_source?.video?.url
-          "
+          :src="getVideoUrl()"
           type="video/mp4"
         />
       </video>
@@ -51,7 +47,14 @@
       class="message-box bg-white flex flex-col items-end text-slate-700"
     >
       <div class="p-2 rounded-full bg-slate-300 w-9 h-9">
-        <DocumentIcon class="w-5 h-5" />
+        <FileIcon
+          :type="
+            getFileType(
+              getFileExtension(message?.message_text || '') ||
+                getFileExtension(getFileName(data_source?.file?.url) || ''),
+            )
+          "
+        />
       </div>
       <div class="text-sm truncate min-w-0 w-full underline">
         {{ getFileName(data_source?.file?.url) }}
@@ -61,25 +64,22 @@
   <MediaDetail
     ref="media_detail_ref"
     :data_source
-    :url="
-      isUseNewCdn()
-        ? getCdnUrl()
-        : data_source?.image?.url ||
-          data_source?.video?.url ||
-          data_source?.audio?.url ||
-          data_source?.file?.url
-    "
+    :url="getDetailUrl()"
     :message_id="message?._id"
     :message
   />
 </template>
 <script setup lang="ts">
+import { SingletonCdn } from '@/utils/helper/Cdn'
+import { useConversationStore } from '@/stores'
+import ENV from '@/configs/envs'
 import { computed, ref } from 'vue'
 import { last } from 'lodash'
 import { FitSize } from '@/utils/helper/Attachment'
 
 import MediaDetail from '@/views/ChatWarper/Chat/CenterContent/MessageList/MessageItem/MediaDetail.vue'
 import Audio from '@/views/ChatWarper/Chat/CenterContent/MessageList/MessageItem/MessageTemplate/Media/Audio.vue'
+import FileIcon from '@/views/ChatWarper/Chat/CenterContent/MessageList/MessageItem/MediaDetail/FileIcon.vue'
 
 import DocumentIcon from '@/components/Icons/Document.vue'
 
@@ -88,8 +88,7 @@ import type {
   MessageInfo,
   MessageTemplateInput,
 } from '@/service/interface/app/message'
-import { SingletonCdn } from '@/utils/helper/Cdn'
-import { useConversationStore } from '@/stores'
+import { getFileExtension, getFileType } from '@/service/helper/file'
 
 const $props = withDefaults(
   defineProps<{
@@ -100,7 +99,7 @@ const $props = withDefaults(
     /**dữ liệu của tin nhắn */
     message: MessageInfo
   }>(),
-  {}
+  {},
 )
 
 const $cdn = SingletonCdn.getInst()
@@ -114,15 +113,19 @@ const platform_type = computed(
   /** ưu tiên platform type của tin nhắn, nếu không có thì fallback platform type của hội thoại */
   () =>
     $props.message?.platform_type ||
-    conversationStore.select_conversation?.platform_type
+    conversationStore.select_conversation?.platform_type,
 )
 
 /**có sử dụng cnd mới không */
 function isUseNewCdn() {
   // các nền tảng sử dụng cdn mới
-  return ['FB_MESS', 'WEBSITE', 'FB_INSTAGRAM', 'TIKTOK'].includes(
-    platform_type.value || ''
-  )
+  return [
+    'FB_MESS',
+    'WEBSITE',
+    'FB_INSTAGRAM',
+    'TIKTOK',
+    'ZALO_PERSONAL',
+  ].includes(platform_type.value || '')
 }
 /**lấy tên của file */
 function getFileName(url: string) {
@@ -148,7 +151,7 @@ function initSize() {
     247,
     160,
     $props.attachment_size?.width,
-    $props.attachment_size?.height
+    $props.attachment_size?.height,
   ).toCss()
 }
 /**đọc dữ liệu mới của tập tin */
@@ -176,6 +179,42 @@ function getCdnUrl(): string | undefined {
   if (platform_type.value === 'TIKTOK')
     return $cdn.tiktokMessageMedia($props.message?.fb_page_id, TARGET_ID, 0)
 
+  if (platform_type.value === 'ZALO_PERSONAL')
+    return $cdn.zlpMessageMedia($props.message?.fb_page_id, TARGET_ID, 0)
+
   return $cdn.fbMessageMedia($props.message?.fb_page_id, TARGET_ID, 0)
+}
+
+/**
+ * Lấy đường dẫn video, xử lý proxy cho ZALO_PERSONAL
+ */
+function getVideoUrl() {
+  let url = isUseNewCdn()
+    ? getCdnUrl() || $props.data_source?.video?.url
+    : $props.data_source?.video?.url
+
+  if (platform_type.value === 'ZALO_PERSONAL' && url) {
+    return `${ENV.host.proxy_video}?url=${url}`
+  }
+  return url
+}
+
+/**
+ * Lấy đường dẫn chi tiết cho MediaDetail
+ */
+function getDetailUrl() {
+  if (isUseNewCdn()) {
+    return getCdnUrl()
+  }
+
+  if ($props.data_source?.video?.url) {
+    return getVideoUrl()
+  }
+
+  return (
+    $props.data_source?.image?.url ||
+    $props.data_source?.audio?.url ||
+    $props.data_source?.file?.url
+  )
 }
 </script>
