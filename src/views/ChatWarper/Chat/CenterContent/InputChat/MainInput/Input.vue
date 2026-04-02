@@ -59,6 +59,7 @@ import {
   useOrgStore,
 } from '@/stores'
 import { send_message } from '@/service/api/chatbox/n4-service'
+import { dispatchEventBus } from '@/event'
 import { map, get, size, uniqueId, partition, set, remove } from 'lodash'
 import { srcImageToFile } from '@/service/helper/file'
 import { scrollToBottomMessage } from '@/service/function'
@@ -332,6 +333,8 @@ class Main {
     const PAGE_ID = page_id.value
     /*id khách */
     const CLIENT_ID = client_id.value
+    /** id FB */
+    const FB_UID = conversationStore.select_conversation?.client_bio?.fb_uid
     /** Lưu selected client id */
     /**div input */
     const INPUT = input_chat_ref.value as HTMLDivElement
@@ -355,7 +358,7 @@ class Main {
         return this.sendReplyMessage(PAGE_ID, CLIENT_ID, TEXT)
       }
       /** gửi text */
-      this.sendText(PAGE_ID, CLIENT_ID, TEXT, INPUT)
+      this.sendText(PAGE_ID, CLIENT_ID, TEXT, INPUT, FB_UID)
     }
 
     /** gửi file */
@@ -366,6 +369,7 @@ class Main {
         CLIENT_ID,
         conversationStore.select_conversation,
         pageStore.selected_page_list_info,
+        FB_UID,
       )
     }
 
@@ -591,6 +595,7 @@ class Main {
     client_id: string,
     text: string,
     input: HTMLDivElement,
+    fb_uid?: string,
   ) {
     /** tính toán mentions */
     const MENTIONS = this.calcMentions(page_id, text)
@@ -670,7 +675,8 @@ class Main {
         page_id,
         client_id,
         pageStore?.selected_page_list_info?.[page_id]?.page?.fb_page_token,
-        conversationStore.select_conversation?.client_bio?.fb_uid,
+        // conversationStore.select_conversation?.client_bio?.fb_uid,
+        fb_uid,
         text,
       )
 
@@ -858,6 +864,7 @@ class Main {
     client_id: string,
     select_conversation?: ConversationInfo,
     selected_page_list_info?: PageList,
+    fb_uid?: string,
   ) {
     /** đánh dấu đang gửi file */
     messageStore.is_send_file = true
@@ -897,13 +904,18 @@ class Main {
         /** Gửi ảnh sau khi upload xong */
         (cb: CbError) => {
           (async () => {
-            /** Kiểm tra có phải dùng extension của FB không */
-            const IS_USE_EXT_BY_FB =
-              commonStore.extension_status === 'FOUND' &&
-              platform_type.value === 'FB_MESS'
 
-            try {
-              /** === GỬI CHÍNH THỐNG === */
+          
+          
+        
+          /** Kiểm tra có phải dùng extension của FB không */
+          const IS_USE_EXT_BY_FB =
+            commonStore.extension_status === 'FOUND' &&
+            platform_type.value === 'FB_MESS'
+
+          /** === GỬI CHÍNH THỐNG === */
+         try {
+            /** === GỬI CHÍNH THỐNG === */
 
               /** ✅ Gom tất cả ảnh có URL */
               const ATTACHMENTS = IMAGE_LIST.filter(f => f.url).map(file => ({
@@ -1061,49 +1073,48 @@ class Main {
 
               // chạy tiếp logic chứ không đợi api gửi tin nhắn
               cb()
-            } catch (e) {
-              /** Nếu là gửi qua extension của FB */
-                if (IS_USE_EXT_BY_FB) {
+          } catch(e) {
+            /** Nếu là gửi qua extension của FB */
+            if(IS_USE_EXT_BY_FB) {
 
-                  /** Gom tất cả ảnh có URL */
-                  const ATTACHMENTS = IMAGE_LIST.filter(f => f.url).map(file => ({
-                    url: file.url as string,
-                    type: file.type,
-                  }))
 
-                  // Nếu không có ảnh nào hợp lệ => bỏ qua
-                  if (!ATTACHMENTS.length) return cb()
+            
 
-                  // Gửi ảnh qua extension
-                  sendImageMessage(
-                    platform_type.value,
-                    page_id,
-                    client_id,
-                    selected_page_list_info?.[page_id]?.page?.fb_page_token,
-                    select_conversation?.client_bio?.fb_uid,
-                    IMAGE_LIST.map(image => ({
-                      url: image.url as string,
-                      fb_image_id: image.fb_image_id,
-                      type: 'image',
-                    })),
-                  )
-                  // Đánh dấu ảnh đã gửi
-                  IMAGE_LIST.forEach(image => {
-                    image.is_loading = false
-                    image.is_done = true
-                  })
+            /** Gom tất cả ảnh có URL */
+            const ATTACHMENTS = IMAGE_LIST.filter(f => f.url).map(file => ({
+              url: file.url as string,
+              type: file.type,
+            }))
 
-                  // xoá temp message bị lỗi trước đó 
-                    messageStore.send_message_list =
-                      messageStore.send_message_list.filter(msg => !msg.error)
+            // Nếu không có ảnh nào hợp lệ => bỏ qua
+            if (!ATTACHMENTS.length) return cb()
 
-                  cb()
-                  return
-                  }
+            // Phát tín hiệu kèm đúng client_id được scope lúc bắt đầu gửi (tránh delay từ phía ext)
+            dispatchEventBus('chatbox_ext_upload_start', client_id)
 
-              cb(e)
+            // Gửi ảnh qua extension
+            sendImageMessage(
+              select_conversation?.platform_type,
+              page_id,
+              client_id,
+              selected_page_list_info?.[page_id]?.page?.fb_page_token,
+              // select_conversation?.client_bio?.fb_uid,
+              fb_uid,
+              IMAGE_LIST.map(image => ({
+                url: image.url as string,
+                fb_image_id: image.fb_image_id,
+                type: 'image',
+              })),
+            )
+            // Đánh dấu ảnh đã gửi
+            IMAGE_LIST.forEach(image => {
+              image.is_loading = false
+              image.is_done = true
+            })
             }
-          })()
+            cb()
+         }
+           })()
         },
 
         (cb: CbError) => {
