@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col gap-3">
     <!-- <PostRightBarSetting /> -->
-    <PostRightBarAiTraining />
+    <!-- <PostRightBarAiTraining /> -->
     <div class="bg-white rounded-lg h-full flex flex-col">
       <div
         class="py-2 px-3 border-b flex-shrink-0 text-sm font-semibold flex items-center justify-between"

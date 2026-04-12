@@ -264,6 +264,7 @@ const source: Language = {
   'Trả lời ngay': 'Reply now',
   'Trả lời sau _': 'Reply after {duration}',
   Lọc: 'Filter',
+  'Lọc theo bài viết': 'Filter posts',
   Nhãn: 'Tag',
   'Trừ nhãn': 'Not tag',
   'Thời gian': 'Date',
