@@ -5,7 +5,6 @@
     width="450px"
     height="500px"
     position="RIGHT"
-    :back="300"
   >
     <NotTag
       v-model:label_list="label_list"
@@ -18,7 +17,6 @@
     width="450px"
     height="500px"
     position="RIGHT"
-    :back="300"
   >
     <NotTag
       v-model:label_list="label_list"

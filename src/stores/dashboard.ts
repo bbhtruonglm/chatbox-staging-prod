@@ -346,9 +346,9 @@ export const usePageManagerStore = defineStore('page_manager_store', () => {
   const ref_dropdown_pick_connect_platform =
     ref<InstanceType<typeof DropdownPickConnectPlatform>>()
   /**vị trí của dropdown */
-  const position = ref<ModalPosition>()
+  const position = ref<ModalPosition>('BOTTOM')
   /**lùi lại bao nhiêu */
-  const back = ref<number>()
+  const back = ref<number>(0)
   /** map pape_id -> group_id */
   const pape_to_group_map = ref<Record<string, string[]>>({})
 

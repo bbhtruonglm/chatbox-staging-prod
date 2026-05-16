@@ -13,13 +13,16 @@
     /> -->
     <template v-else>
       <AiJourney />
-      <template v-for="(widget, index) of pageStore.widget_list">
+      <template 
+        v-for="(widget, index) of pageStore.widget_list"
+        :key="widget.app_id"
+      >
         <div
           v-if="!widget.is_hidden"
           :class="{
             'flex-grow': widget.is_show,
           }"
-          class="rounded-lg bg-white overflow-hidden flex-shrink-0 flex flex-col group hover:bg-slate-50"
+          class="rounded-lg theme-card overflow-hidden flex-shrink-0 flex flex-col group"
           v-show="view === 'widgets'"
         >
           <button
@@ -93,7 +96,6 @@
       width="220px"
       height="auto"
       :is_fit="false"
-      :back="180"
       class_content="flex flex-col gap-1 rounded-md p-1 gap-1 font-medium text-sm"
     >
       <div
@@ -146,7 +148,6 @@
     <Dropdown
       ref="change_mode_dropdown_ref"
       width="220px"
-      :back="10"
       height="auto"
       :is_fit="false"
       class_content="flex flex-col gap-1 rounded-md p-1 gap-1 font-medium text-sm"
@@ -280,6 +281,9 @@ async function getListWidget() {
   // nếu không có id trang thì thôi
   if (!PAGE_ID) return
 
+  /** danh sách widget đang mở */
+  const WIDGET_OPENING = pageStore.widget_list.find(widget => widget.is_show)
+
   if (
     // nếu vẫn trong 1 trang và
     LIST_WIDGET_TOKEN.new_page_id === LIST_WIDGET_TOKEN.old_page_id &&
@@ -339,12 +343,53 @@ async function getListWidget() {
   // sắp xếp lại danh sách widget theo index
   temp_list_widget = sortBy(temp_list_widget, 'index_position')
 
-  // chỉ hiển thị widget đầu tiên nếu không có widget luôn hiển thị nào
-  if (temp_list_widget?.[0] && !current_visible_widgets.value?.length)
+  /** widget sẽ được mở ở list mới nếu nó được mở ở list cũ */
+  let new_widget_opening:AppInstalledInfo | null = null
+
+  // ưu tiên mở lại widget đang mở nếu danh sách mới vẫn có widget đó
+  if (WIDGET_OPENING) {
+    temp_list_widget.forEach(widget => {
+      // nếu là cùng 1 app thì mở lại widget đó và set url lại như cũ để ko bị reload
+      if(WIDGET_OPENING.app_id === widget.app_id){
+        widget.is_show = true
+        widget.url = WIDGET_OPENING.url
+        new_widget_opening = widget
+      }
+    })
+  }
+
+  // nếu không có widget đang mở thì dùng danh sách widget luôn hiển thị
+  if (!WIDGET_OPENING) {
+    temp_list_widget.forEach(widget => {
+      widget.is_show = current_visible_widgets.value?.includes(widget?._id || '')
+    })
+  }
+
+  // nếu vẫn chưa có widget nào hiển thị thì mở widget đầu tiên
+  if (temp_list_widget?.[0] && !temp_list_widget.some(widget => widget.is_show))
     temp_list_widget[0].is_show = true
 
   // render lại danh sách
   pageStore.widget_list = copy(temp_list_widget)
+
+  // gửi sự kiện đến iframe được chọn
+  nextTick(() => {
+    // nếu không có widget nào được mở ở list cũ thì không gửi sự kiện
+    if(!new_widget_opening || !WIDGET_OPENING) return
+    sendEventToIframe(new_widget_opening, {
+        from: 'CHATBOX',
+        type: 'RELOAD',
+        payload: {
+          access_token:
+            conversationStore.list_widget_token?.data?.[new_widget_opening._id || ''],
+          partner_token:
+            pageStore.selected_page_list_info?.[
+              conversationStore.select_conversation?.fb_page_id!
+            ]?.partner_token,
+          client_id: conversationStore.select_conversation?.fb_client_id,
+        },
+      })
+  })
 }
 /**gửi sự kiện đến iframe được chọn */
 function sendEventToIframe(widget: AppInstalledInfo, payload: any) {

@@ -1,8 +1,8 @@
 <template>
   <button
     @click="model = name"
-    :class="model === name ? 'bg-white shadow-sm' : 'text-gray-500'"
-    class="py-1 px-3 rounded text-sm font-medium w-fit hover:brightness-90"
+    :class="model === name ? 'theme-card' : 'text-gray-500'"
+    class="py-1 px-3 rounded text-sm font-medium w-fit theme-hover"
   >
     {{ title }}
   </button>

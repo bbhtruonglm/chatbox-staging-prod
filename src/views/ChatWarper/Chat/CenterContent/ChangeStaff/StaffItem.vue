@@ -1,7 +1,7 @@
 <template>
   <div class="h-[calc(100%_-_33px)] overflow-y-auto">
     <div
-      class="w-full flex items-center justify-between py-2.5 border-b cursor-pointer hover:bg-orange-100 px-2"
+      class="w-full flex items-center justify-between py-2.5 border-b cursor-pointer theme-hover theme-border px-2"
       v-for="(staff, index) in staffListWithNone"
       :key="staff?.user_id || staff?.fb_staff_id || 'none'"
       @click="$emit('select_staff', staff)"
@@ -59,5 +59,5 @@ const $props = withDefaults(
 )
 
 /** ✅ Thêm option “Không chọn nhân viên” vào đầu danh sách */
-const staffListWithNone = computed(() => [...$props.staffs, null])
+const staffListWithNone = computed(() => [null, ...$props.staffs])
 </script>

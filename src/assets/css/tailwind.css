@@ -1,3 +1,47 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.theme-page {
+  @apply bg-gray-200 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100;
+}
+
+.theme-card {
+  @apply bg-white dark:border dark:bg-zinc-900 dark:border-zinc-800;
+}
+
+.theme-card-secondary {
+  @apply bg-white dark:border dark:bg-zinc-800 dark:border-zinc-700;
+}
+
+.theme-active {
+  @apply bg-zinc-200 dark:bg-zinc-800 dark:border dark:border-zinc-700;
+}
+
+.theme-active-foreground {
+  @apply !bg-zinc-900 text-white dark:!bg-zinc-700 dark:border dark:border-zinc-600;
+}
+
+.theme-hover {
+  @apply hover:bg-zinc-200 dark:hover:bg-zinc-700;
+}
+
+.theme-border {
+  @apply border-zinc-200 dark:border-zinc-700;
+}
+
+.theme-border-foreground {
+  @apply border-zinc-900 dark:border-zinc-200;
+}
+
+.theme-checkbox {
+  @apply bg-zinc-100;
+}
+
+.theme-checkbox:checked {
+  @apply bg-zinc-900 dark:bg-zinc-100;
+}
+
+.theme-checkbox:checked::after {
+  @apply border-zinc-100 dark:border-zinc-900;
+}

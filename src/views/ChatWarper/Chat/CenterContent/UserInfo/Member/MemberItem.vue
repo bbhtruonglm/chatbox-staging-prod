@@ -3,7 +3,7 @@
     <!-- avatar -->
     <div class="flex items-center flex-1 overflow-hidden gap-5">
       <img
-        :src="avatar_member"
+        :src="props.avatar_member"
         alt="avatar"
         class="w-8 h-8 flex-shrink-0 rounded-full"
       />
@@ -11,7 +11,7 @@
       <p
         class="flex flex-1 flex-col text-sm truncate overflow-hidden font-semibold flex-shrink-0"
       >
-        {{ name_member }}
+        {{ props.name_member }}
       </p>
     </div>
     <div
@@ -25,80 +25,83 @@
 </template>
 
 <script setup lang="ts">
-import { useConversationStore, usePageStore } from '@/stores'
-import { N13ZaloPersonal } from '@/utils/api/N13ZaloPersonal'
-import { TrashIcon } from '@heroicons/vue/24/outline'
-import { container } from 'tsyringe'
 import { Toast } from '@/utils/helper/Alert/Toast'
-import { keys } from 'lodash'
-import { computed } from 'vue'
-
+import { TrashIcon } from '@heroicons/vue/24/outline'
 import { confirm } from '@/service/helper/alert'
+import { container } from 'tsyringe'
 import { useI18n } from 'vue-i18n'
+import { useZaloGroupMemberStore } from '@/stores'
 
-const emit = defineEmits(['delete-success'])
-
-/*Prod truyền vào từ cha**/
-const props = defineProps<{
-  /**Avarta thành viên*/
-  avatar_member: string
-  /**Tên thành viên*/
-  name_member: string
-  /** ID member */
-  member_id: string
+/** Emit báo thao tác xóa thành viên đã thành công. */
+const emit = defineEmits<{
+  /** Báo component cha biết thao tác xóa đã hoàn tất. */
+  (e: 'delete-success'): void
 }>()
-/** Hàm dịch */
-const $t = useI18n().t
-/** Thông tin page */
-const pageStore = usePageStore()
-/** THông tin conversation */
-const conversationStore = useConversationStore()
-/**id khách */
-const client_id = computed(
-  () => conversationStore.select_conversation?.fb_client_id
-)
 
-/** Khởi tạo trực tiếp instance API Zalo */
-const API_ZALO = new N13ZaloPersonal('app/page/group')
+/** Props truyền thông tin thành viên và định danh nhóm. */
+const props = defineProps<{
+  /** Avatar thành viên. */
+  avatar_member: string
+  /** Tên thành viên. */
+  name_member: string
+  /** Id thành viên cần xóa. */
+  member_id: string
+  /** Id trang Zalo cá nhân của nhóm. */
+  page_id: string
+  /** Id nhóm Zalo hiện tại. */
+  group_id: string
+}>()
+
+/** Hàm dịch nội dung giao diện. */
+const $t = useI18n().t
+
+/** Store cache danh sách thành viên nhóm Zalo. */
+const zaloGroupMemberStore = useZaloGroupMemberStore()
+
+/** Service hiển thị thông báo. */
 const $toast = container.resolve(Toast)
 
 /**
- * Xử lý Thêm thành viên vào nhóm trên Zalo
+ * Xử lý xóa thành viên khỏi nhóm Zalo.
+ * @param member_id - Id thành viên cần xóa khỏi nhóm.
  */
 async function handleRemoveMember(member_id?: string) {
-  /** Lấy page_id mặc định (page đầu tiên) */
-  const PAGE_IDS = keys(pageStore.selected_page_id_list)
+  // Nếu thiếu định danh nhóm hoặc thành viên thì dừng thao tác.
+  if (!props.page_id || !props.group_id || !member_id) {
+    // Hiển thị thông báo thiếu dữ liệu thao tác.
+    $toast.error($t('Vui lòng chọn trang và khách hàng trước khi thực hiện'))
 
-  /** Lấy page_id mặc định (page đầu tiên) */
-  let page_id = PAGE_IDS[0] || ''
-
-  const GROUP_ID = keys(conversationStore.selected_client_id)
-  let group_id = GROUP_ID[0] || client_id.value || ''
-
-  /** Payload gửi lên API Zalo */
-  const PAYLOAD = {
-    member_id: member_id || '',
-    page_id,
-    group_id,
+    // Kết thúc hàm khi dữ liệu không hợp lệ.
+    return
   }
 
   try {
-    /** Gọi API tạo group */
-    const DATA = await API_ZALO.removeMemberZalo(PAYLOAD)
-    console.log('Xóa thành viên thành công:', DATA)
+    // Gọi store xóa member, store sẽ gọi API remove và cập nhật cache local.
+    await zaloGroupMemberStore.removeGroupMember({
+      page_id: props.page_id,
+      group_id: props.group_id,
+      member_id,
+    })
+
+    // Hiển thị thông báo xóa thành viên thành công.
     $toast.success($t('v1.common.remove_member_success'))
+
+    // Báo cho component cha biết thao tác xóa đã hoàn tất.
     emit('delete-success')
-  } catch (err) {
-    console.error('Lỗi khi xóa thành viên:', err)
+  } catch (ERROR) {
+    // Hiển thị lỗi khi API xóa member thất bại.
+    $toast.error(ERROR)
   }
 }
 
-/** xác nhận xóa các tập tin */
+/** Xác nhận trước khi xóa thành viên khỏi nhóm. */
 function confirmDeleteMember() {
+  // Mở hộp thoại xác nhận trước khi xóa thành viên.
   confirm('question', $t('v1.common.confirm_remove_member'), '', is_cancel => {
-    /** nếu hủy thì thôi */
+    // Nếu người dùng hủy thì không xóa.
     if (is_cancel) return
-    /** xóa các tập tin đã chọn */
+
+    // Gọi hàm xóa thành viên đã xác nhận.
     handleRemoveMember(props.member_id)
   })
 }

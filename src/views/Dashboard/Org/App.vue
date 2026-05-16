@@ -9,25 +9,21 @@
     <template #item>
       <Toggle
         v-model="org_is_ai_auto_translate"
-        class_toggle="peer-checked:bg-black"
       >
         {{ $t('v1.view.main.dashboard.org.app.auto_translate_en') }}
       </Toggle>
       <Toggle
         v-model="org_is_ai_auto_suggest_response"
-        class_toggle="peer-checked:bg-black"
       >
         {{ $t('v1.view.main.dashboard.org.app.auto_hint_quick_answer') }}
       </Toggle>
       <Toggle
         v-model="org_is_ai_auto_alert_complain"
-        class_toggle="peer-checked:bg-black"
       >
         {{ $t('v1.view.main.dashboard.org.app.auto_alert_complain') }}
       </Toggle>
       <Toggle
         v-model="org_is_ai_auto_auto_tag"
-        class_toggle="peer-checked:bg-black"
       >
         {{ $t('v1.view.main.dashboard.org.app.auto_tag') }}
       </Toggle>

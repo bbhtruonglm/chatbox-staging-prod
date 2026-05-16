@@ -3,7 +3,7 @@
     @click="model = value"
     :class="
       model === value
-        ? 'shadow-sm hover:brightness-90 bg-white'
+        ? 'shadow-sm hover:brightness-90 theme-card'
         : 'text-gray-500 '
     "
     class="text-left py-1 px-3 rounded text-sm font-medium"

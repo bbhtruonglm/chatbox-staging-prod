@@ -120,7 +120,7 @@ export class ExternalSite implements IExternalSite {
     let uri:string | undefined
     
     // nếu là môi trường production thì dùng link của đối tác
-    if(NODE_ENV === 'production') {
+    if (NODE_ENV === 'production') {
       uri = this.STORE_COMMON.partner?.external_link?.[site]
     }
 
@@ -156,6 +156,28 @@ export class ExternalSite implements IExternalSite {
     // mở tab mới
     this.openSite(URI, path, QS)
   }
+
+  /** tạo link trang thống kê */
+  createAnalyticUrl(path: string = '', ): string {
+    /**đường dẫn */
+    const URI = this.calcUri('analytic')
+
+    /**id các trang đang chọn */
+    const PAGE_IDS = keys(this.STORE_PAGE.selected_page_id_list)?.join()
+
+    /**dữ liệu đính kèm url */
+    const QS = this.SERVICE_PARSER.toQueryString({
+      ...this.getCommonParams(),
+
+      access_token: this.SERVICE_LOCALSTORAGE.getItem('access_token'),
+      page_id: PAGE_IDS,
+      is_embed: true
+    })
+
+    // mở tab mới
+    return `${URI}/${path}?${QS}`
+  }
+
   openPageAnalytic(path: string = '') {
     /**đường dẫn */
     const URI = this.calcUri('analytic')

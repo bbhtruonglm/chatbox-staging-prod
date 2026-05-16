@@ -1,103 +1,114 @@
 <template>
-  <div class="flex-shrink-0 px-2 gap-1 flex justify-start items-center">
-    <div
-      v-if="!orgStore.selected_org_info"
-      class="h-8 w-40 bg-slate-200 rounded animate-pulse"
-    ></div>
-    <div
-      v-else
-      v-tooltip.bottom="`v${version}`"
-      class="font-semibold text-2xl truncate"
-    >
-      <template v-if="orgStore.selected_org_info?.org_info?.org_name">
-        {{ orgStore.selected_org_info?.org_info?.org_name }}
-      </template>
-      <template v-else>
-        {{ commonStore.partner?.name }}
-      </template>
+  <div class="flex justify-between items-center gap-2">
+    <div class="w-full min-w-0 flex items-center">
+      <SelectGroupChat />
+      <p
+        v-tooltip.top="$t('Tổng số hội thoại')"
+        class="shrink-0 rounded-full bg-slate-200 text-slate-700 font-medium text-xs px-2 py-1 leading-[14px] max-w-20 truncate"
+      >
+        {{ $format.formatAbbreviationNumber(total_count) }}
+      </p>
     </div>
-    <!-- <Badge
-      v-if="count_all_unread"
-      :value="count_all_unread"
-    /> -->
+    <button
+      class="p-1.5 theme-button-icon rounded-lg"
+      v-tooltip="$t('v1.common.add_customer')"
+      @click="ref_dropdown?.toggleDropdown"
+    >
+      <PlusIcon class="size-5 flex-shrink-0" />
+    </button>
+    <Dropdown
+      ref="ref_dropdown"
+      height="auto"
+      :is_fit="false"
+      :position="'BOTTOM'"
+      class_content="flex flex-col gap-1 text-sm p-2.5"
+    >
+      <button
+        class="p-2 rounded-lg flex items-center gap-2 theme-hover"
+        @click="
+          () => {
+            ref_dropdown?.toggleDropdown()
+            modal_zalo_personal_ref?.toggleModal()
+            message_data = undefined
+          }
+        "
+      >
+        <UserPlusIcon class="size-5 flex-shrink-0" />
+        <p>{{ $t('Kết bạn') }}</p>
+      </button>
+      <button
+        class="p-2 rounded-lg flex items-center gap-2 theme-hover"
+        @click="
+          () => {
+            ref_dropdown?.toggleDropdown()
+            modal_zalo_create_group_ref?.toggleModal()
+            message_data = undefined
+          }
+        "
+      >
+        <UserGroupIcon class="size-5 flex-shrink-0" />
+        <p>{{ $t('Tạo nhóm') }}</p>
+      </button>
+    </Dropdown>
   </div>
   <div class="flex-shrink-0 flex items-center justify-between">
     <template v-if="!is_search">
       <div class="text-sm gap-3 flex items-center h-8 min-w-0">
         <button
-          @click="$main.activeTab('CHAT')"
-          :class="{
-            'font-semibold border-b-2 border-black':
-              !conversationStore.option_filter_page_data.conversation_type ||
-              conversationStore.option_filter_page_data.conversation_type ===
-                'CHAT',
-          }"
-          class="h-full flex gap-1 items-center truncate"
-        >
-          <p>{{ $t('Chat') }}</p>
-          <p
-            v-if="conversationStore.count_conversation?.chat"
-            class="rounded-full bg-slate-200 text-slate-700 font-medium text-xxs px-1 leading-[14px] max-w-20 truncate"
-          >
-            {{ currency(conversationStore.count_conversation.chat) }}
-          </p>
-        </button>
-        <button
-          @click="$main.activeTab('POST')"
-          :class="{
-            'font-semibold border-b-2 border-black':
-              conversationStore.option_filter_page_data.conversation_type ===
-              'POST',
-          }"
-          class="h-full flex gap-1 items-center truncate"
-        >
-          <p>{{ $t('Bài viết') }}</p>
-          <p
-            v-if="conversationStore.count_conversation?.post"
-            class="rounded-full bg-slate-200 text-slate-700 font-medium text-xxs px-1 leading-[14px] max-w-20 truncate"
-          >
-            {{ currency(conversationStore.count_conversation.post) }}
-          </p>
-        </button>
-      </div>
-      <div class="flex gap-3 text-slate-500 shrink-0">
-        <button
-          v-show="
-            conversationStore.select_conversation?.platform_type?.includes(
-              'ZALO'
-            )
-          "
-          class="p-2 bg-slate-100 rounded-full"
+          v-for="(tab, index) in tabs"
+          :key="index"
           @click="
             () => {
-              modal_zalo_create_group_ref?.toggleModal()
-              message_data = undefined
+              conversationStore.option_filter_page_data.tab = tab.value
             }
           "
-          v-tooltip="$t('v1.common.create_new_group')"
+          :class="{
+            'theme-border-foreground':
+              conversationStore.option_filter_page_data.tab === tab.value,
+          }"
+          class="h-full flex gap-1 items-center truncate font-semibold border-b-2 border-b-transparent"
         >
-          <UserGroupIcon class="size-4 flex-shrink-0" />
-        </button>
-        <button
-          class="p-2 bg-slate-100 rounded-full"
-          @click="
-            () => {
-              modal_zalo_personal_ref?.toggleModal()
-              message_data = undefined
-            }
-          "
-          v-tooltip="$t('v1.common.add_customer')"
-        >
-          <UserPlusIcon class="size-4 flex-shrink-0" />
-        </button>
-        <button
-          @click="$main.toggleSearch()"
-          class="w-8 h-8 bg-slate-100 rounded-full flex justify-center items-center"
-          v-tooltip="$t('v1.common.search')"
-        >
-          <SearchIcon class="w-4 h-4" />
+          <p>{{ tab.label }}</p>
+          <!-- <template
+            v-if="conversationStore.option_filter_page_data.tab === tab.value"
+          >
+            <p
+              v-if="
+                conversationStore.count_conversation?.chat &&
+                conversationStore.option_filter_page_data.conversation_type ===
+                  'CHAT'
+              "
+              class="rounded-full bg-slate-200 text-slate-700 font-medium text-xxs px-1 leading-[14px] max-w-20 truncate"
+            >
+              {{
+                $format.formatAbbreviationNumber(
+                  conversationStore.count_conversation?.chat,
+                )
+              }}
+            </p>
+            <p
+              v-if="
+                conversationStore.count_conversation?.post &&
+                conversationStore.option_filter_page_data.conversation_type ===
+                  'POST'
+              "
+              class="rounded-full bg-slate-200 text-slate-700 font-medium text-xxs px-1 leading-[14px] max-w-20 truncate"
+            >
+              {{
+                $format.formatAbbreviationNumber(
+                  conversationStore.count_conversation?.post,
+                )
+              }}
+            </p>
+          </template> -->
         </button>
       </div>
+      <button
+        @click="$main.toggleSearch()"
+        v-tooltip="$t('v1.common.search')"
+      >
+        <SearchIcon class="size-4" />
+      </button>
     </template>
     <div
       v-else
@@ -110,7 +121,7 @@
         v-model.trim="search_conversation"
         @blur="$main.toggleSearch()"
         ref="ref_search_conversation"
-        class="w-full bg-slate-100 placeholder-slate-500 py-1.5 pl-9 pr-8 text-sm rounded-full"
+        class="w-full theme-active placeholder-slate-500 py-1.5 pl-9 pr-8 text-sm rounded-full"
         type="text"
         :placeholder="$t('v1.common.search')"
       />
@@ -124,12 +135,12 @@
   </div>
   <div
     v-if="isFilterActive()"
-    class="bg-slate-100 rounded-lg py-1.5 px-2 text-xs flex gap-2 items-center"
+    class="theme-active rounded-lg py-1.5 px-2 text-xs flex gap-2 items-center"
     :class="{
       hidden: conversationStore.selected_quick_filter !== 'ALL',
     }"
   >
-    <div class="flex gap-2 w-full min-w-0">
+    <div class="flex gap-2 w-full min-w-0 items-center">
       <FunnelIcon class="w-3.5 h-3.5 flex-shrink-0" />
       <p class="truncate">{{ filter }}</p>
     </div>
@@ -141,25 +152,25 @@
 </template>
 <script setup lang="ts">
 import { isFilterActive } from '@/service/function'
-import { currency } from '@/service/helper/format'
 import {
   useCommonStore,
   useConversationStore,
   useMessageStore,
   useOrgStore,
+  usePageManagerStore,
   usePageStore,
 } from '@/stores'
 import { FilterService } from '@/utils/helper/Filter'
+import { Format } from '@/utils/helper/Format'
 import { format } from 'date-fns'
-import { debounce, map } from 'lodash'
+import { debounce, forEach, map } from 'lodash'
+import { storeToRefs } from 'pinia'
 import { container } from 'tsyringe'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
-
-import QuickFilter from '@/views/ChatWarper/Chat/LeftBar/Header/QuickFilter.vue'
 
 import SearchIcon from '@/components/Icons/Search.vue'
+import SelectGroupChat from '@/views/ChatWarper/Header/SelectGroupChat.vue'
 import {
   FunnelIcon,
   UserGroupIcon,
@@ -167,39 +178,44 @@ import {
   XMarkIcon,
 } from '@heroicons/vue/24/outline'
 import { XCircleIcon } from '@heroicons/vue/24/solid'
+import { PlusIcon } from 'lucide-vue-next'
 
 import type { ILabel } from '@/service/interface/app/label'
 import type { StaffInfo } from '@/service/interface/app/staff'
-import { storeToRefs } from 'pinia'
+import Dropdown from '@/components/Dropdown.vue'
 
-/**tab đang kích hoạt */
-type IActiveTab = 'CHAT' | 'POST'
 // store
 const conversationStore = useConversationStore()
 const commonStore = useCommonStore()
 const pageStore = usePageStore()
+const pageManagerStore = usePageManagerStore()
 const orgStore = useOrgStore()
 // i18n
 const { t: $t } = useI18n()
 
+/** danh sách các tab */
+const TAB: { value: 'UNREAD' | 'UNREPLIED' | undefined; label: string }[] = [
+  { value: undefined, label: $t('Mới nhất') },
+  // { value: 'UNREAD', label: $t('Chưa đọc') },
+  // { value: 'UNREPLIED', label: $t('Chưa trả lời') },
+]
+
 const { modal_zalo_personal_ref, message_data, modal_zalo_create_group_ref } =
   storeToRefs(useMessageStore())
 
-/** router */
-const $router = useRouter()
-
+const $format = container.resolve(Format)
 const $filter_service = container.resolve(FilterService)
 
-/**phiên bản trong package.json */
-const version = npm_package_version
 /**giá trị của ô tìm kiếm hội thoại */
 const search_conversation = ref<string>()
 /**trạng thái tìm kiếm */
 const is_search = ref<boolean>(
-  !!conversationStore.option_filter_page_data.search
+  !!conversationStore.option_filter_page_data.search,
 )
 /**tham chiếu đến ô tìm kiếm */
 const ref_search_conversation = ref<HTMLInputElement>()
+/** tham chiếu đến dropdown */
+const ref_dropdown = ref<InstanceType<typeof Dropdown>>()
 
 /**delay tìm kiếm hội thoại */
 const onSearchConversation = debounce((value?: string) => {
@@ -223,19 +239,19 @@ const filter = computed(() => {
   /** nếu là lọc tương tác từ tin nhắn */
   if (conversationStore.option_filter_page_data.display_style === 'INBOX') {
     FILTER_GENERAL.push(
-      $t('v1.view.main.dashboard.chat.filter.interact.message')
+      $t('v1.view.main.dashboard.chat.filter.interact.message'),
     )
   }
   /** nếu là lọc tương tác từ bình luận */
   if (conversationStore.option_filter_page_data.display_style === 'COMMENT') {
     FILTER_GENERAL.push(
-      $t('v1.view.main.dashboard.chat.filter.interact.comment')
+      $t('v1.view.main.dashboard.chat.filter.interact.comment'),
     )
   }
   /** nếu là lọc tương tác từ bạn bè */
   if (conversationStore.option_filter_page_data.display_style === 'FRIEND') {
     FILTER_GENERAL.push(
-      $t('v1.view.main.dashboard.chat.filter.interact.friend')
+      $t('v1.view.main.dashboard.chat.filter.interact.friend'),
     )
   }
   /** nếu là lọc tương tác từ nhóm */
@@ -252,13 +268,13 @@ const filter = computed(() => {
     conversationStore.option_filter_page_data.not_response_client === 'true'
   ) {
     FILTER_GENERAL.push(
-      $t('v1.view.main.dashboard.chat.filter.message.not_reply')
+      $t('v1.view.main.dashboard.chat.filter.message.not_reply'),
     )
   }
   /** nếu là lọc tin nhắn chứa gắn nhãn */
   if (conversationStore.option_filter_page_data.not_exist_label === 'true') {
     FILTER_GENERAL.push(
-      $t('v1.view.main.dashboard.chat.filter.message.not_tag')
+      $t('v1.view.main.dashboard.chat.filter.message.not_tag'),
     )
   }
   /** nếu là lọc tin nhắn spam */
@@ -268,13 +284,13 @@ const filter = computed(() => {
   /** nếu là lọc có số điện thoại */
   if (conversationStore.option_filter_page_data.have_phone === 'YES') {
     FILTER_GENERAL.push(
-      $t('v1.view.main.dashboard.chat.filter.phone.include_phone')
+      $t('v1.view.main.dashboard.chat.filter.phone.include_phone'),
     )
   }
   /** nếu là lọc không có số điện thoại */
   if (conversationStore.option_filter_page_data.have_phone === 'NO') {
     FILTER_GENERAL.push(
-      $t('v1.view.main.dashboard.chat.filter.phone.exclude_phone')
+      $t('v1.view.main.dashboard.chat.filter.phone.exclude_phone'),
     )
   }
   /** nếu là lọc ngày */
@@ -289,8 +305,8 @@ const filter = computed(() => {
       FITLER_TIME.push(
         `${format(START, 'HH:mm, dd/MM/yyyy')} - ${format(
           END,
-          'HH:mm, dd/MM/yyyy'
-        )}`
+          'HH:mm, dd/MM/yyyy',
+        )}`,
       )
     }
   }
@@ -298,7 +314,7 @@ const filter = computed(() => {
   if (conversationStore.option_filter_page_data.label_id?.length) {
     /** danh sách các tiêu đề nhãn đã chọn */
     const TITLE_TAGS = conversationStore.option_filter_page_data.label_id?.map(
-      id => tags.value?.[id]?.title || ''
+      id => tags.value?.[id]?.title || '',
     )
 
     FILTER_TAG.push(...TITLE_TAGS)
@@ -308,7 +324,7 @@ const filter = computed(() => {
     /** danh sách các tiêu đề nhãn trừ nhãn */
     const TITLE_NOT_TAGS =
       conversationStore.option_filter_page_data.not_label_id?.map(
-        id => tags.value?.[id]?.title || ''
+        id => tags.value?.[id]?.title || '',
       )
 
     FILTER_NOT_TAG.push(...TITLE_NOT_TAGS)
@@ -317,7 +333,7 @@ const filter = computed(() => {
   if (conversationStore.option_filter_page_data.staff_id?.length) {
     /** danh sách tên các nhân sự được lọc */
     const STAFF_NAMES = conversationStore.option_filter_page_data.staff_id?.map(
-      id => staffs.value?.[id]?.name || ''
+      id => staffs.value?.[id]?.name || '',
     )
 
     FILTER_STAFF.push(...STAFF_NAMES)
@@ -329,7 +345,7 @@ const filter = computed(() => {
   addContent(
     RESULT,
     FILTER_GENERAL,
-    $t('v1.view.main.dashboard.chat.filter.post.filter')
+    $t('v1.view.main.dashboard.chat.filter.post.filter'),
   )
   // thêm nội dung lọc nhãn
   addContent(RESULT, FILTER_TAG, $t('Nhãn'))
@@ -344,6 +360,18 @@ const filter = computed(() => {
     RESULT.push($t('Lọc bài viết'))
   }
   return RESULT.join(', ')
+})
+
+/** danh sách các tab để lọc hội thoại */
+const tabs = computed(()=>{
+  switch (orgStore.selected_org_info?.org_config?.org_sort_conversation){
+    case 'UNREAD':
+      return [{ value: undefined, label: $t('Chưa đọc') }]
+    case 'NEWEST':
+      return [
+        { value: undefined, label: $t('Mới nhất') },
+      ]
+  }
 })
 
 /** danh sách nhãn của các trang đã chọn */
@@ -372,6 +400,17 @@ const staffs = computed(() => {
   return staffs
 })
 
+/** tổng số hội thoại */
+const total_count = computed(() => {
+  if (conversationStore.option_filter_page_data.conversation_type === 'CHAT') {
+    return conversationStore.count_conversation?.chat
+  } else if(conversationStore.option_filter_page_data.conversation_type === 'POST') {
+    return conversationStore.count_conversation?.post
+  }
+
+})
+
+/** thêm nội dung bộ lọc */
 function addContent(result: string[], content: string[], title: string) {
   // nếu không có thì thôi
   if (!content.length) return
@@ -379,41 +418,8 @@ function addContent(result: string[], content: string[], title: string) {
   result.push(`${title}: ${content.join(', ')}`)
 }
 
-// theo dõi giá trị ô tìm kiếm
-watch(() => search_conversation.value, onSearchConversation)
-
-// läng nghe trạng thái của phím tắt
-watch(
-  () => commonStore.keyboard_shortcut,
-  value => {
-    // nếu không phải tìm kiếm thì bỏ qua
-    if (value !== 'search_conversation') return
-
-    // nếu chưa search thì bật chế độ search
-    if (!is_search.value) $main.toggleSearch()
-    // nếu đã có search rồi thi focus vào ô tìm kiếm
-    else ref_search_conversation.value?.focus()
-
-    // clear data
-    commonStore.keyboard_shortcut = ''
-  }
-)
-
 class Main {
-  /**chuyển đổi tab đang kích hoạt */
-  activeTab(tab: IActiveTab) {
-    // thay đổi cờ
-    conversationStore.option_filter_page_data.conversation_type = tab
-
-    // nếu tab là dạng bài biết thì thêm param lên url
-    $router.push({
-      query: {
-        ...$router.currentRoute.value.query,
-        tab: tab === 'POST' ? 'POST' : undefined,
-      },
-    })
-  }
-  /**chuyển đổi trạng thái tìm kiếm */ 
+  /**chuyển đổi trạng thái tìm kiếm */
   async toggleSearch() {
     // nếu đang tìm kiếm và có giá trị ô tìm kiếm thì không cho đóng ô tìm kiếm
     if (is_search.value && search_conversation.value) return
@@ -437,7 +443,72 @@ class Main {
     await nextTick()
     ref_search_conversation.value?.focus()
   }
+
+  /**build danh sách page được chọn theo group */
+  buildSelectedPageList(group_id: string) {
+    /** lấy ra id của tổ chức hiện tại */
+    const ORG_ID = orgStore.selected_org_id
+    /** danh sách page được chọn theo group */
+    const NEXT_SELECTED_PAGE_ID_LIST: Record<string, boolean> = {}
+
+    /** nếu không có id tổ chức thì không làm gì */
+    if (!ORG_ID) return NEXT_SELECTED_PAGE_ID_LIST
+
+    forEach(pageStore.all_page_list, item => {
+      /** id page */
+      const PAGE_ID = item.page?.fb_page_id
+
+      /** không có id page thì không làm gì */
+      if (!PAGE_ID) return
+
+      /** không có page trong danh sách page của tổ chức hiện tại thì không làm gì */
+      if (pageStore.map_orgs?.map_page_org?.[PAGE_ID] !== ORG_ID) return
+
+      /** nếu là group ALL thì không làm gì */
+      if (
+        group_id !== 'ALL' &&
+        !pageManagerStore.pape_to_group_map?.[PAGE_ID]?.includes(group_id)
+      )
+        return
+
+      /** thêm vào danh sách page được chọn */
+      NEXT_SELECTED_PAGE_ID_LIST[PAGE_ID] = true
+    })
+
+    return NEXT_SELECTED_PAGE_ID_LIST
+  }
+
+  /** so sánh danh sách page được chọn có giống nhau không */
+  isSameSelectedPageList(target: Record<string, boolean>) {
+    /** danh sách id page được chọn hiện tại */
+    const CURRENT_PAGE_IDS = Object.keys(pageStore.selected_page_id_list || {})
+      .filter(page_id => !!pageStore.selected_page_id_list?.[page_id])
+      .sort()
+    /** danh sách id page được chọn theo group */
+    const TARGET_PAGE_IDS = Object.keys(target).sort()
+
+    /** nếu danh sách id page được chọn không giống nhau thì không làm gì */
+    if (CURRENT_PAGE_IDS.length !== TARGET_PAGE_IDS.length) return false
+
+    /** kiểm tra xem từng id page có giống nhau không */
+    return TARGET_PAGE_IDS.every((page_id, index) => {
+      return page_id === CURRENT_PAGE_IDS[index]
+    })
+  }
+
+  /**áp dụng danh sách page đã chọn */
+  applySelectedPage(group_id: string) {
+    /** danh sách page được chọn theo group */
+    const NEXT_SELECTED_PAGE_ID_LIST = this.buildSelectedPageList(group_id)
+
+    /** nếu danh sách page được chọn không thay đổi thì không làm gì */
+    if (this.isSameSelectedPageList(NEXT_SELECTED_PAGE_ID_LIST)) return
+
+    /** áp dụng danh sách page đã chọn */
+    pageStore.selected_page_id_list = NEXT_SELECTED_PAGE_ID_LIST
+  }
 }
+
 const $main = new Main()
 
 onMounted(() => {
@@ -446,4 +517,24 @@ onMounted(() => {
     search_conversation.value = conversationStore.option_filter_page_data.search
   }
 })
+
+// theo dõi giá trị ô tìm kiếm
+watch(() => search_conversation.value, onSearchConversation)
+
+// läng nghe trạng thái của phím tắt
+watch(
+  () => commonStore.keyboard_shortcut,
+  value => {
+    // nếu không phải tìm kiếm thì bỏ qua
+    if (value !== 'search_conversation') return
+
+    // nếu chưa search thì bật chế độ search
+    if (!is_search.value) $main.toggleSearch()
+    // nếu đã có search rồi thi focus vào ô tìm kiếm
+    else ref_search_conversation.value?.focus()
+
+    // clear data
+    commonStore.keyboard_shortcut = ''
+  },
+)
 </script>

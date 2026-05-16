@@ -28,7 +28,7 @@
             </div>
             <div
               @click="toggleModal"
-              class="bg-slate-100 rounded-lg p-1 cursor-pointer"
+              class="theme-active rounded-lg p-1 cursor-pointer"
             >
               <XMarkIcon class="w-5 h-5" />
             </div>

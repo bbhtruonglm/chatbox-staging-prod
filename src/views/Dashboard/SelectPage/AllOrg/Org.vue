@@ -5,7 +5,7 @@
     :class="{
       'opacity-50':
         orgStore.selected_org_id !== org_id &&
-        size(pageStore.selected_page_id_list) &&
+        !isEmpty(pageStore.selected_page_id_list) &&
         selectPageStore.is_group_page_mode,
     }"
     class="group/org-item pt-0"
@@ -45,8 +45,7 @@
     </template>
     <template #item>
       <OrgPages
-        @sort_list_page="$main.getListPage"
-        v-model:active_page_list="active_page_list"
+        :active_page_list="active_page_list"
         :org_id
       />
     </template>
@@ -55,13 +54,10 @@
 <script setup lang="ts">
 import {
   useOrgStore,
-  usePageManagerStore,
   usePageStore,
   useSelectPageStore,
 } from '@/stores'
-import { usePageManager } from '@/views/Dashboard/composables/usePageManager'
-import { filter, pickBy, size } from 'lodash'
-import { computed, onMounted, watch } from 'vue'
+import { isEmpty, size } from 'lodash'
 
 import CardItem from '@/components/Main/Dashboard/CardItem.vue'
 import Group from '@/views/Dashboard/SelectPage/AllOrg/Org/Group.vue'
@@ -76,90 +72,28 @@ const $props = withDefaults(
   defineProps<{
     /** id tổ chức */
     org_id: string
+    /** số lượng page của org trước khi filter group */
+    visible_page_count?: number
+    /** danh sách page đã được lọc/sort sẵn cho tổ chức hiện tại */
+    active_page_list: PageData[]
   }>(),
-  {}
+  {
+    visible_page_count: 0,
+    active_page_list: () => [],
+  }
 )
 
 const orgStore = useOrgStore()
 const pageStore = usePageStore()
-const pageManagerStore = usePageManagerStore()
 const selectPageStore = useSelectPageStore()
 
-/** composable */
-const { sortListPage, filterPageByGroup } = usePageManager()
-
-/**danh sách page sau khi được lọc */
-const active_page_list = defineModel<PageData[]>('active_page_list')
-
-/** danh sách các page thuộc tổ chức hiện tại */
-const page_of_current_org = computed(() => {
-  // console.log(pageStore.active_page_list, 'active_page_list')
-  return pickBy(pageStore.active_page_list, page => {
-    return $main.isInCurrentOrg(page)
-  })
-})
-
-/** danh sách sau khi đã lọc theo nhóm */
-const filter_page_list = computed(() => {
-  // console.log(page_of_current_org.value, 'page_of_current_org')
-  // console.log(pageManagerStore.pape_to_group_map, 'pape_to_group_map')
-  // console.log(pageStore.map_orgs?.map_page_org || {}, 'map_page_org')
-  // console.log(orgStore.selected_org_group, 'selected_org_group')
-  return filterPageByGroup(
-    page_of_current_org.value,
-    pageManagerStore.pape_to_group_map,
-    pageStore.map_orgs?.map_page_org || {},
-    orgStore.selected_org_group
-  )
-})
-
 class Main {
-  /**sắp xếp page gắn sao lên đầu */
-  getListPage() {
-    // console.log(filter_page_list.value, 'filter_page_list')
-    // console.log(filter_page_list.value, 'filter_page_list')
-    // lọc ra các page thuộc về nhóm này
-    active_page_list.value = sortListPage(filter_page_list.value)
-  }
-
   /** đếm số page của tổ chức hiện tại với nền tảng đang được lọc */
   countPage(): number {
-    // console.log('active_page_list', pageStore.active_page_list)
-    /** các page của tổ chức hiện tại */
-    const PAGE_OF_THIS_ORG = filter(pageStore.active_page_list, page =>
-      this.isInCurrentOrg(page)
-    )
-
-    return size(PAGE_OF_THIS_ORG)
-  }
-
-  /**trang có thuộc tổ chức hiện tại không */
-  isInCurrentOrg(page?: PageData): boolean {
-    // không có page thì không hiển thị
-    if (!page?.page?.fb_page_id) return false
-
-    // chỉ hiển thị trang của tổ chức này
-    if (
-      !pageStore.map_orgs?.map_org_page?.[$props.org_id]?.[
-        page?.page?.fb_page_id
-      ]
-    )
-      return false
-
-    // cho phép hiển thị
-    return true
+    return $props.visible_page_count || 0
   }
 }
 const $main = new Main()
-
-// load danh sách trang khi component được tạo
-onMounted(() => $main.getListPage())
-
-// thay đổi bộ lọc nhóm
-watch(
-  () => filter_page_list.value,
-  () => $main.getListPage()
-)
 
 defineExpose({ countPage: $main.countPage.bind($main) })
 </script>

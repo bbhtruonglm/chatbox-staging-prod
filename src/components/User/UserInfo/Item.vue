@@ -2,7 +2,7 @@
   <div class="flex items-center gap-3 py-1.5">
     <div class="min-w-0 flex-grow flex items-center gap-3">
       <div
-        class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0"
+        class="w-8 h-8 rounded-full theme-active flex items-center justify-center flex-shrink-0"
       >
         <component
           :is="icon"

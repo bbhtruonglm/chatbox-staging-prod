@@ -18,7 +18,7 @@
       ref="search_ref"
       type="text"
       :placeholder="$t('Tìm kiếm nhãn')"
-      class="border px-3 py-1 rounded-lg focus:outline-none w-full text-sm"
+      class="border theme-border theme-card-secondary px-3 py-1 rounded-lg focus:outline-none w-full text-sm"
       v-on:keyup="searchLabel"
       v-model.trim="label_search_name"
     />

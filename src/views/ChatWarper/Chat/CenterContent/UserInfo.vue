@@ -2,7 +2,7 @@
   <div
     v-if="conversationStore.select_conversation"
     id="chat__user-info"
-    class="bg-white rounded-t-lg flex-shrink-0 py-2 px-3 flex justify-between gap-3"
+    class="theme-card rounded-tr-2.5xl flex-shrink-0 py-2 px-3 flex justify-between gap-3 z-10"
   >
     <div class="flex items-center gap-2.5 flex-grow min-w-0">
       <div class="relative">
@@ -46,7 +46,7 @@
           {{ conversationStore.select_conversation?.fb_client_id }}
         </div>
         <div
-          v-else
+          v-else-if="!conversationStore.select_conversation?.is_group"
           class="flex items-center gap-2"
         >
           <button
@@ -78,6 +78,15 @@
           </button>
           <IconInfo />
         </div>
+        <div 
+          v-else 
+          v-tooltip.left="$t('Thành viên nhóm')"
+          class="flex items-center gap-1 text-xs text-slate-500 cursor-pointer"
+          @click="member_list_ref?.toggle"
+        >
+          {{ group_members.length }} thành viên
+          <ArrowDownIcon class="w-2.5 h-2.5 flex-shrink-0"/>
+        </div>
       </div>
     </div>
     <div
@@ -85,32 +94,18 @@
       class="flex items-center flex-shrink-0 gap-3.5"
     >
       <ChatbotStatus v-if="conversationStore.getPage()?.is_active_ai_agent" />
-      <!--  -->
       <button
         v-if="orgStore.selected_org_info?.org_package?.org_allow_message_action"
         @click="toggleListPhone"
         v-tooltip.left="$t('Gọi điện thoại')"
-        class="p-1.5 flex justify-center items-center rounded-lg border border-green-600 bg-green-100"
+        class="p-1.5 flex justify-center items-center rounded-lg theme-button-icon"
       >
-        <PhoneIcon class="size-3.5 text-green-600"></PhoneIcon>
+        <PhoneIcon class="size-5"></PhoneIcon>
       </button>
-      <!-- <button  @click="phone_list_ref?.toggle" v-tooltip.left="$t('v1.view.main.dashboard.chat.action.mark_call')"  class="p-1.5 flex justify-center items-center rounded-lg border border-green-600 bg-green-100">
-        <PhoneIcon class="w-3.5 h-3.5 text-green-600"></PhoneIcon>
-      </button> -->
-      <!--  -->
-      <button
-        v-if="conversationStore.select_conversation?.is_group === true"
-        @click="member_list_ref?.toggle"
-        v-tooltip.left="$t('Thành viên nhóm')"
-        class="p-1.5 flex justify-center items-center rounded-lg border border-slate-500 hover:bg-slate-100"
-      >
-        <UsersIcon class="size-3.5 text-slate-500"></UsersIcon>
-      </button>
-      <!--  -->
       <button
         @click="$main.unreadConversation"
         v-tooltip.left="$t('v1.view.main.dashboard.chat.action.mark_unread')"
-        class="text-slate-500 border border-slate-500 p-1.5 rounded-lg hover:bg-slate-100"
+        class="p-1.5 flex justify-center items-center rounded-lg theme-button-icon"
       >
         <Loading
           v-if="is_loading_unread_conversation"
@@ -118,15 +113,21 @@
         />
         <MailOpenIcon
           v-else
-          class="size-3.5"
+          class="size-5"
         />
       </button>
       <button
         v-tooltip.bottom="$t('v1.common.more')"
         @click="client_menu_ref?.toggle"
-        class="text-slate-500 border border-slate-500 p-1.5 rounded-lg hover:bg-slate-100"
+        class="p-1.5 flex justify-center items-center rounded-lg theme-button-icon"
       >
-        <DotIcon class="size-3.5" />
+        <DotIcon class="size-5" />
+      </button>
+      <button
+        class="lg+:hidden p-1.5 flex justify-center items-center rounded-lg theme-button-icon"
+        @click="commonStore.show_right_pane = !commonStore.show_right_pane"
+      >
+        <PanelRightOpenIcon class="size-5" />
       </button>
     </div>
   </div>
@@ -134,12 +135,18 @@
   <ListPhone ref="phone_list_ref" />
   <Member
     ref="member_list_ref"
+    :members="group_members"
+    :is_loading="is_loading_group_members"
+    :page_id="page_id"
+    :group_id="group_id"
     @add-member="openAddZaloModal"
   />
   <ChangeStaff ref="change_staff_ref" />
   <ZaloAddMember
     ref="modal_zalo_add_member_ref"
-    @success="handleRefreshMember"
+    :group_members="group_members"
+    :page_id="page_id"
+    :group_id="group_id"
   />
 </template>
 <script setup lang="ts">
@@ -150,10 +157,12 @@ import {
   useExtensionStore,
   useMessageStore,
   useOrgStore,
+  useZaloGroupMemberStore,
 } from '@/stores'
 import { N4SerivceAppOneConversation } from '@/utils/api/N4Service/Conversation'
 import { Toast } from '@/utils/helper/Alert/Toast'
 import { Clipboard } from '@/utils/helper/Clipboard'
+import { storeToRefs } from 'pinia'
 import { container } from 'tsyringe'
 import { computed, ref, watch } from 'vue'
 
@@ -166,6 +175,7 @@ import IconInfo from '@/views/ChatWarper/Chat/CenterContent/UserInfo/IconInfo.vu
 import ListPhone from '@/views/ChatWarper/Chat/CenterContent/UserInfo/ListPhone.vue'
 import Member from '@/views/ChatWarper/Chat/CenterContent/UserInfo/Member.vue'
 import Menu from '@/views/ChatWarper/Chat/CenterContent/UserInfo/Menu.vue'
+import ZaloAddMember from './MessageList/MessageItem/PhoneAction/ZaloAddMember.vue'
 
 /**Icon*/
 import ArrowDownIcon from '@/components/Icons/ArrowDown.vue'
@@ -174,10 +184,8 @@ import MailOpenIcon from '@/components/Icons/MailOpen.vue'
 import { selectConversation } from '@/service/function'
 import { error } from '@/utils/decorator/Error'
 import { loading } from '@/utils/decorator/Loading'
-import { UsersIcon } from '@heroicons/vue/24/outline'
 import { PhoneIcon } from '@heroicons/vue/24/solid'
-import ZaloAddMember from './MessageList/MessageItem/PhoneAction/ZaloAddMember.vue'
-import { storeToRefs } from 'pinia'
+import { PanelRightOpenIcon } from 'lucide-vue-next'
 
 const $emit = defineEmits(['toggle_change_assign_staff'])
 
@@ -185,6 +193,8 @@ const orgStore = useOrgStore()
 const commonStore = useCommonStore()
 const conversationStore = useConversationStore()
 const extensionStore = useExtensionStore()
+/** Store cache danh sách thành viên nhóm Zalo. */
+const zaloGroupMemberStore = useZaloGroupMemberStore()
 const $clipboard = container.resolve(Clipboard)
 const $toast = container.resolve(Toast)
 /** Lấy thông tin user */
@@ -208,6 +218,33 @@ const is_staff_assigned = computed(() => {
     (conversationStore.getAssignStaff()?.user_id ||
       conversationStore.getAssignStaff()?.fb_staff_id) ===
     chatbotUserStore.getStaffId()
+  )
+})
+
+/** Id trang của hội thoại đang chọn. */
+const page_id = computed(() => {
+  // Trả về page_id của hội thoại hiện tại.
+  return conversationStore.select_conversation?.fb_page_id
+})
+
+/** Id nhóm của hội thoại đang chọn. */
+const group_id = computed(() => {
+  // Trả về client_id vì hội thoại nhóm dùng client_id làm group_id.
+  return conversationStore.select_conversation?.fb_client_id
+})
+
+/** Danh sách thành viên nhóm lấy từ store cache. */
+const group_members = computed(() => {
+  // Trả về danh sách thành viên theo page_id và group_id hiện tại.
+  return zaloGroupMemberStore.getGroupMembers(page_id.value, group_id.value)
+})
+
+/** Trạng thái loading danh sách thành viên nhóm. */
+const is_loading_group_members = computed(() => {
+  // Trả về trạng thái loading theo page_id và group_id hiện tại.
+  return zaloGroupMemberStore.isLoadingGroupMembers(
+    page_id.value,
+    group_id.value
   )
 })
 
@@ -315,6 +352,10 @@ function toggleListPhone(event: MouseEvent) {
 
 /**kiểm tra xem có đang tìm uid không */
 function isFindUid() {
+  /** chỉ loading tìm uid với hội thoại Facebook */
+  if (conversationStore.select_conversation?.platform_type !== 'FB_MESS')
+    return false
+
   /** nếu không có key thì dừng */
   if (!conversationStore.select_conversation?.data_key) return false
 
@@ -332,13 +373,6 @@ function clickAvatar() {
   }
   /** mở modal xem thông tin người dùng */
   client_menu_ref.value?.openClientInfo()
-}
-
-/**
- * Refresh danh sách thành viên
- */
-function handleRefreshMember() {
-  member_list_ref.value?.refresh()
 }
 
 const $main = new Main()

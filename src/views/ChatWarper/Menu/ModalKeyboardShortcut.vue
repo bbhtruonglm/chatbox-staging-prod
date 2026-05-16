@@ -3,11 +3,11 @@
     ref="base_modal"
     class_modal="w-[1100px] max-h-[90dvh] gap-2 text-sm font-medium p-2 bg-glass"
     class_close="rounded-lg bg-slate-100"
-    class_body="bg-white rounded-md flex flex-col px-2"
+    class_body="theme-card-secondary rounded-md flex flex-col px-2"
     class_footer="flex justify-end"
   >
     <template #body>
-      <header class="flex justify-between items-center py-2.5 px-2 border-b sticky top-0 bg-white">
+      <header class="flex justify-between items-center py-2.5 px-2 border-b sticky top-0 bg-inherit">
         <h2 class="text-base font-semibold">Phím tắt</h2>
         <button>
           <XMarkIcon class="w-7 h-7" 

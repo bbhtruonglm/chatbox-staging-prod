@@ -5,7 +5,7 @@
       <DotLottieVue
         src="https://lottie.host/6bfe6f47-cf28-43cf-a818-8e2d861d2d09/ORDprTQWtP.lottie"
         background="black"
-        speed="1"
+        :speed="1"
         :style="style"
         loop
         autoplay

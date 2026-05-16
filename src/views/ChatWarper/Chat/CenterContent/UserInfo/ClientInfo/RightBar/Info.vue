@@ -80,9 +80,9 @@
       :class="{
         'cursor-not-allowed': conversationStore.isFindClientInfo(),
       }"
-      class="flex items-center text-slate-700 bg-slate-100 rounded-md text-sm py-2 px-4 gap-2 justify-center w-fit hover:brightness-90"
+      class="flex items-center theme-card-secondary rounded-md text-sm py-2 px-4 gap-2 justify-center w-fit hover:brightness-90"
     >
-      <ReloadContentIcon class="text-slate-700 w-4 h-4" />
+      <ReloadContentIcon class="w-4 h-4" />
       {{ $t('v1.view.main.dashboard.chat.client.reload_info') }}
       <Loading
         v-if="conversationStore.isFindClientInfo()"
@@ -124,7 +124,8 @@ import ReloadContentIcon from '@/components/Icons/ReloadContent.vue'
 import { ChevronDownIcon } from '@heroicons/vue/24/outline'
 
 import { AiAppContact, AiAppOneContact, type ContactInfo } from '@/utils/api/Ai'
-import { N4ServiceConversation, type ConversationInfo } from '@/utils/api/N4Serivce'
+import { N4ServiceConversation } from '@/utils/api/N4Serivce'
+import type { ConversationInfo } from '@/service/interface/app/conversation'
 
 const conversationStore = useConversationStore()
 const extensionStore = useExtensionStore()
@@ -255,17 +256,22 @@ function reloadClientInfo() {
   )
     return
 
+  /** key của hội thoại tại thời điểm người dùng bấm quét lại */
+  const DATA_KEY = conversationStore.select_conversation.data_key
+
+  // gắn cờ đây là lần người dùng chủ động quét lại
+  extensionStore.force_update_client_info[DATA_KEY] = true
+
   // gắn cờ đang tìm kiếm thông tin khách hàng
-  extensionStore.is_find_client_info[
-    conversationStore.select_conversation?.data_key
-  ] = true
+  extensionStore.is_find_client_info[DATA_KEY] = true
 
   // quá 10s thì thôi không loading nữa
   setTimeout(() => {
     // tắt cờ đang quét thông tin khách hàng
-    extensionStore.is_find_client_info[
-      conversationStore.select_conversation?.data_key!
-    ] = false
+    extensionStore.is_find_client_info[DATA_KEY] = false
+
+    // hết thời gian chờ thì bỏ cờ ép update
+    delete extensionStore.force_update_client_info[DATA_KEY]
   }, 10000)
 
   // gọi ext để lấy uid và thông tin khách hàng

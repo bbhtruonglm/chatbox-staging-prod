@@ -1,5 +1,6 @@
 import _ from 'lodash'
 import { format as date_format } from 'date-fns'
+import { UNLIMITED_VALUE } from '@/configs/constants/billing'
 
 /**
  * format số thành dạng hiển thị tiền tệ
@@ -78,4 +79,13 @@ export const dateFormat = (date?: string, format: string = 'dd/MM/yyyy') => {
 
   // nếu có date thì format theo format truyền vào
   return date_format(new Date(date), format)
+}
+
+/** format số lượng */
+export const formatLimit = (value?: number) => {
+  // nếu giá trị là vô hạn thì trả về ký tự vô hạn
+  if (value === UNLIMITED_VALUE) return '∞'
+
+  // nếu không có giá trị thì trả về 0
+  return value || 0
 }

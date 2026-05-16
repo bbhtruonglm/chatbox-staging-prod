@@ -79,7 +79,7 @@
         <!-- List conversation -->
         <div class="flex-1 overflow-y-auto border-t border-slate-200 pt-2">
           <div
-            v-for="conv in FILTERED_CONVERSATION"
+            v-for="conv in filtered_conversation"
             :key="conv.fb_client_id + '_' + conv.fb_page_id"
             class="flex items-center justify-between p-2 border-b border-slate-100 hover:bg-slate-50 cursor-pointer"
             @click="toggleMember(conv)"
@@ -106,7 +106,7 @@
           </div>
 
           <div
-            v-if="FILTERED_CONVERSATION.length === 0"
+            v-if="filtered_conversation.length === 0"
             class="p-2 text-slate-400 text-sm"
           >
             {{ $t('v1.common.no_data') }}
@@ -121,35 +121,64 @@
 import { container } from 'tsyringe'
 import { computed, ref } from 'vue'
 import { Toast } from '@/utils/helper/Alert/Toast'
-
-const emit = defineEmits(['success'])
-
+import type { IGroupMember } from '@/utils/api/N4Service/ZaloPersonal'
 import Modal from '@/components/Modal.vue'
 import type {
   FilterConversation,
   QueryConversationResponse,
 } from '@/service/interface/app/conversation'
-import { useConversationStore, useOrgStore, usePageStore } from '@/stores'
-import { N13ZaloPersonal } from '@/utils/api/N13ZaloPersonal'
+import {
+  useConversationStore,
+  useOrgStore,
+  useZaloGroupMemberStore,
+} from '@/stores'
 import { N4SerivceAppConversation } from '@/utils/api/N4Service/Conversation'
 import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/vue/24/outline'
-import { isEmpty, keys } from 'lodash'
+import { isEmpty } from 'lodash'
 import { useI18n } from 'vue-i18n'
 import { Format } from '@/utils/helper/Format'
+
+/** Props nhận dữ liệu nhóm Zalo hiện tại từ UserInfo. */
+const props = withDefaults(
+  defineProps<{
+    /** Danh sách thành viên nhóm hiện tại. */
+    group_members?: IGroupMember[]
+    /** Id trang Zalo cá nhân của nhóm. */
+    page_id?: string
+    /** Id nhóm Zalo hiện tại. */
+    group_id?: string
+  }>(),
+  {
+    /** Mặc định danh sách thành viên là mảng rỗng. */
+    group_members: () => [],
+  }
+)
+
+/** Emit báo thao tác thêm thành viên đã thành công. */
+const emit = defineEmits(['success'])
 
 const $format = container.resolve(Format)
 
 /** Hàm dịch */
 const $t = useI18n().t
-/** Stores quản lý org và page */
+/** Store quản lý tổ chức hiện tại. */
 const orgStore = useOrgStore()
-const pageStore = usePageStore()
-/** THông tin conversation */
+/** Thông tin conversation hiện tại. */
 const conversationStore = useConversationStore()
-/**id khách */
-const client_id = computed(
-  () => conversationStore.select_conversation?.fb_client_id
-)
+/** Store cache danh sách thành viên nhóm Zalo. */
+const zaloGroupMemberStore = useZaloGroupMemberStore()
+/** Id trang Zalo cá nhân của nhóm. */
+const page_id = computed(() => {
+  // Ưu tiên page_id truyền từ UserInfo, fallback về conversation đang chọn.
+  return props.page_id || conversationStore.select_conversation?.fb_page_id || ''
+})
+/** Id nhóm Zalo hiện tại. */
+const group_id = computed(() => {
+  // Ưu tiên group_id truyền từ UserInfo, fallback về client_id của conversation nhóm.
+  return (
+    props.group_id || conversationStore.select_conversation?.fb_client_id || ''
+  )
+})
 /** UI state */
 /** Tên group Zalo muốn tạo */
 const group_name = ref('')
@@ -180,8 +209,6 @@ const error_group_name = ref(false)
 /** Kiểm tra lỗi chọn thành viên */
 const error_select_members = ref('')
 
-/** Khởi tạo trực tiếp instance API Zalo */
-const API_ZALO = new N13ZaloPersonal('app/page/group')
 const $toast = container.resolve(Toast)
 
 /**
@@ -270,8 +297,6 @@ async function fetchAllConversations() {
   /** Page hiện tại đang được chọn */
   const CURRENT_PAGE_ID = conversationStore?.select_conversation?.fb_page_id
 
-  /** Lấy tất cả page_id đang chọn */
-  const PAGE_IDS = keys(pageStore.selected_page_id_list)
   /** Filter mặc định */
   const FILTER: FilterConversation = {
     conversation_type: 'CHAT',
@@ -318,7 +343,7 @@ async function fetchAllConversations() {
 /**
  * Computed filter conversation theo từ khóa name hoặc phone
  */
-const FILTERED_CONVERSATION = computed(() => {
+const filtered_conversation = computed(() => {
   /** Nếu không có key word thì trả về cả list */
   if (!search_conversation.value) return conversations.value
   /** Xử lý to lowercase và xóa dấu */
@@ -341,28 +366,33 @@ async function handleRemoveSelect() {
  * Xử lý Thêm thành viên vào nhóm trên Zalo
  */
 async function handleAddMember() {
+  // Reset error
   error_select_members.value = ''
 
-  /** Lấy page_id mặc định (page đầu tiên) */
-  const PAGE_IDS = keys(pageStore.selected_page_id_list)
+  /** Id trang Zalo cá nhân của nhóm hiện tại. */
+  const PAGE_ID = page_id.value
 
-  /** Lấy page_id mặc định (page đầu tiên) */
-  let page_id = PAGE_IDS[0] || ''
+  /** Id nhóm Zalo hiện tại. */
+  const GROUP_ID = group_id.value
 
-  const GROUP_ID = keys(conversationStore.selected_client_id)
-  let group_id = GROUP_ID[0] || client_id.value || ''
+  // Nếu thiếu page_id hoặc group_id thì không thêm thành viên.
+  if (!PAGE_ID || !GROUP_ID) {
+    // Hiển thị lỗi thiếu dữ liệu nhóm.
+    error_select_members.value = $t(
+      'Vui lòng chọn trang và khách hàng trước khi thực hiện'
+    )
 
-  /** Payload gửi lên API Zalo */
-  const PAYLOAD = {
-    member_id: selected_members.value.map(m => m.fb_client_id),
-    page_id,
-    group_id,
+    // Kết thúc hàm khi dữ liệu nhóm không hợp lệ.
+    return
   }
 
   try {
-    /** Gọi API tạo group */
-    const DATA = await API_ZALO.addMemberZalo(PAYLOAD)
-    console.log('Thêm thành viên thành công:', DATA)
+    /** Gọi store thêm member, store sẽ gọi API add và cập nhật cache local. */
+    await zaloGroupMemberStore.addGroupMembers({
+      page_id: PAGE_ID,
+      group_id: GROUP_ID,
+      members: selected_members.value,
+    })
     /** Reset selected_members */
     selected_members.value = []
     /** Ẩn modal */

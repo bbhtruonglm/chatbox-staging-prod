@@ -1,51 +1,9 @@
 <template>
   <div class="h-full flex-shrink-0 flex flex-col justify-between">
     <div class="flex flex-col gap-1 overflow-y-auto">
-      <div class="flex justify-center">
-        <button @click="$router.push('/dashboard/select-page')">
-          <div class="size-9 overflow-hidden group">
-            <div class="size-full group-hover:hidden">
-              <img
-                v-if="
-                  $main.isShowOrgLogo() &&
-                  orgStore.selected_org_info?.org_info?.org_avatar
-                "
-                :src="orgStore.selected_org_info?.org_info?.org_avatar"
-                class="w-full h-full rounded-full object-cover"
-              />
-              <img
-                v-else
-                :src="commonStore.partner?.logo?.icon"
-                class="w-full h-full"
-              />
-            </div>
-            <div
-              class="hidden group-hover:flex justify-center items-center size-full bg-black rounded-full"
-              v-tooltip.right="$t('Quay lại Trình quản lý Trang')"
-            >
-              <ArrowLeftIcon class="size-5 text-white" />
-            </div>
-          </div>
-        </button>
-      </div>
-      <!-- <button
-        @mouseenter="attach_ref?.toggleDropdown"
-        v-tooltip.right="$t('v1.view.main.dashboard.nav.menu')"
-        class="rounded-lg p-2.5 group"
-      >
-        <Squares2X2Icon class="w-6 h-6 m-auto group-hover:text-red-600" />
-      </button> -->
-      <NavItem
-        :is_disable_tooltip="true"
-        @mouseover="attach_ref?.attach_ref?.mouseover"
-        @mouseleave="attach_ref?.attach_ref?.mouseleave"
-        :is_active="false"
-        :icon="Squares2X2Icon"
-        :title="$t('v1.view.main.dashboard.nav.menu')"
-      />
-      <hr class="border-slate-700 w-8 mx-auto" />
       <NavItem
         id="interact"
+        v-if="!is_post_tab"
         :is_disable_tooltip="true"
         @dblclick="filter_interact?.filter_dropdown_ref?.toggleDropdown"
         @mouseover="filter_interact?.filter_popover_ref?.mouseover"
@@ -57,6 +15,7 @@
       />
       <NavItem
         id="message"
+        v-if="!is_post_tab"
         :is_disable_tooltip="true"
         @dblclick="filter_message?.filter_dropdown_ref?.toggleDropdown"
         @mouseover="filter_message?.filter_popover_ref?.mouseover"
@@ -68,6 +27,7 @@
       />
       <NavItem
         id="phone"
+        v-if="!is_post_tab"
         @dblclick="filter_phone?.filter_dropdown_ref?.toggleDropdown"
         :is_disable_tooltip="true"
         @mouseover="filter_phone?.filter_popover_ref?.mouseover"
@@ -90,6 +50,7 @@
       />
       <NavItem
         id="tag"
+        v-if="!is_post_tab"
         :is_disable_tooltip="true"
         @dblclick="filter_tag?.filter_dropdown_ref?.toggleDropdown"
         @mouseover="filter_tag?.filter_popover_ref?.mouseover"
@@ -101,6 +62,7 @@
       />
       <NavItem
         id="not_tag"
+        v-if="!is_post_tab"
         :is_disable_tooltip="true"
         @dblclick="filter_not_tag?.filter_dropdown_ref?.toggleDropdown"
         @mouseover="filter_not_tag?.filter_popover_ref?.mouseover"
@@ -112,7 +74,7 @@
       />
       <NavItem
         id="staff"
-        v-if="$main.isShowStaffFilter()"
+        v-if="!is_post_tab && $main.isShowStaffFilter()"
         :is_disable_tooltip="true"
         @dblclick="filter_staff?.filter_dropdown_ref?.toggleDropdown"
         @mouseover="filter_staff?.filter_popover_ref?.mouseover"
@@ -141,12 +103,24 @@
         :title="$t('v1.view.main.dashboard.chat.filter.un_filter')"
       />
     </div>
-    <User
-      position="TOP"
-      :back="0"
-    />
+    <div class="flex flex-col gap-1">
+      <NavItem
+        id="qr-retion-app"
+        :is_disable_tooltip="true"
+        @mouseover="qr_retion_app?.mouseover"
+        @mouseleave="qr_retion_app?.mouseleave"
+        :icon="QrCodeIcon"
+        :title="$t('Tải ứng dụng Retion')"
+      />
+      <NavItem
+        id="support-center"
+        :is_disable_tooltip="true"
+        @click="support_center?.dropdown_ref?.toggleDropdown"
+        :icon="SupportCenterIcon"
+        :title="$t('Support Center') || 'Support Center'"
+      />
+    </div>
   </div>
-  <Attach ref="attach_ref" />
   <FilterInteract ref="filter_interact" />
   <FilterMessage ref="filter_message" />
   <FilterPhone ref="filter_phone" />
@@ -155,6 +129,8 @@
   <FilterNotTag ref="filter_not_tag" />
   <FilterStaff ref="filter_staff" />
   <FilterPost ref="filter_post" />
+  <QrRetionApp ref="qr_retion_app" />
+  <SupportCenter ref="support_center" />
 </template>
 
 <script setup lang="ts">
@@ -164,15 +140,14 @@ import {
   isFilterActive,
   resetConversationFilter,
 } from '@/service/function'
-import { useCommonStore, useConversationStore, useOrgStore } from '@/stores'
+import { useCommonStore, useConversationStore } from '@/stores'
 import {
   CalcSpecialPageConfigs,
   type ICalcSpecialPageConfigs,
 } from '@/utils/helper/Conversation/CalcSpecialPageConfigs'
 import { container } from 'tsyringe'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 
-import User from '@/components/User.vue'
 import Attach from '@/views/ChatWarper/Menu/Attach.vue'
 import FilterDate from '@/views/ChatWarper/Menu/FilterModal/FilterDate.vue'
 import FilterInteract from '@/views/ChatWarper/Menu/FilterModal/FilterInteract.vue'
@@ -183,6 +158,8 @@ import FilterPost from '@/views/ChatWarper/Menu/FilterModal/FilterPost.vue'
 import FilterStaff from '@/views/ChatWarper/Menu/FilterModal/FilterStaff.vue'
 import FilterTag from '@/views/ChatWarper/Menu/FilterModal/FilterTag.vue'
 import NavItem from '@/views/ChatWarper/Menu/NavItem.vue'
+import QrRetionApp from '@/views/ChatWarper/Menu/QrRetionApp.vue'
+import SupportCenter from '@/views/ChatWarper/Menu/SupportCenter.vue'
 
 import ChatDotIcon from '@/components/Icons/ChatDot.vue'
 import CloseBoldIcon from '@/components/Icons/CloseBold.vue'
@@ -190,13 +167,13 @@ import DateIcon from '@/components/Icons/Date.vue'
 import InboxIcon from '@/components/Icons/Inbox.vue'
 import NewSpaperIcon from '@/components/Icons/NewSpaper.vue'
 import PhoneIcon from '@/components/Icons/Phone.vue'
+import SupportCenterIcon from '@/components/Icons/SupportCenterIcon.vue'
 import TagIcon from '@/components/Icons/Tag.vue'
 import TagNotIcon from '@/components/Icons/TagNot.vue'
 import UsersIcon from '@/components/Icons/Users.vue'
-import { ArrowLeftIcon, Squares2X2Icon } from '@heroicons/vue/24/solid'
+import { QrCodeIcon } from '@heroicons/vue/24/outline'
 
 const conversationStore = useConversationStore()
-const orgStore = useOrgStore()
 const commonStore = useCommonStore()
 
 /**ref của menu đính kèm */
@@ -217,9 +194,16 @@ const filter_not_tag = ref<InstanceType<typeof FilterNotTag>>()
 const filter_staff = ref<InstanceType<typeof FilterStaff>>()
 /** Lọc theo bài post */
 const filter_post = ref<InstanceType<typeof FilterPost>>()
+/**  QR của Retion App */
+const qr_retion_app = ref<InstanceType<typeof QrRetionApp>>()
+const support_center = ref<InstanceType<typeof SupportCenter>>()
 
 /** id của bộ lọc đã bật gần nhất */
 const filter_show_with_shortcut = ref('')
+/** trạng thái tab bài viết */
+const is_post_tab = computed(
+  () => conversationStore.option_filter_page_data.conversation_type === 'POST'
+)
 
 /** lắng nghe trạng thái của bộ lọc */
 watch(
@@ -295,6 +279,30 @@ watch(
     commonStore.keyboard_shortcut = ''
   }
 )
+// logic khi chuyển sang tab POST
+watch(
+  () => conversationStore.option_filter_page_data.conversation_type,
+  (value, old_value) => {
+    // nếu không phải chuyển sang post thì thôi
+    if (value !== 'POST' || old_value === 'POST') return
+
+    // clear data của các bộ lọc chỉ có trong tab chat
+    clearChatOnlyFiltersForPost()
+  }
+)
+// clear các filter cho tab post
+function clearChatOnlyFiltersForPost() {
+  // clear các filter không dùng trong bài post
+  filter_interact.value?.clearThisFilter()
+  filter_message.value?.clearThisFilter()
+  filter_phone.value?.clearThisFilter()
+  filter_tag.value?.clearThisFilter()
+  filter_not_tag.value?.clearThisFilter()
+  filter_staff.value?.clearThisFilter()
+  resetConversationFilter()
+  // xóa filter label_and
+  delete conversationStore.option_filter_page_data.label_and
+}
 
 class Main {
   /**
@@ -313,10 +321,6 @@ class Main {
 
     // nếu chỉ cho nv xem của mình thì không hiện lọc nhân viên
     return !SPECIAL_PAGE_CONFIG.is_only_visible_client_of_staff
-  }
-  /**kiểm tra xem có hiển thị logo tổ chức không */
-  isShowOrgLogo() {
-    return orgStore.isBusinessPack()
   }
 
   /** Xóa toàn bộ lọc đã chọn */

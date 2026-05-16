@@ -11,12 +11,13 @@
     </template>
 
     <template #body>
-      <div class="bg-white h-full w-full rounded-md p-2 flex flex-col gap-4">
+      <div class="theme-card h-full w-full rounded-md p-2 flex flex-col gap-4">
         <!-- Tạo group -->
         <label>{{ $t('v1.common.create_new_group') }}</label>
         <div class="flex gap-2 items-center w-full">
           <input
             v-model="group_name"
+            class="theme-card-secondary"
             :class="[
               'border h-8 w-full rounded px-2 py-0.5 text-sm',
               error_group_name ? 'border-red-500' : '',
@@ -44,7 +45,7 @@
           />
           <input
             v-model="search_conversation"
-            class="w-full bg-slate-100 placeholder-slate-500 py-1.5 pl-9 pr-8 text-sm rounded-md"
+            class="w-full theme-card-secondary placeholder-slate-500 py-1.5 pl-9 pr-8 text-sm rounded-md"
             type="text"
             :placeholder="$t('v1.common.search_member')"
           />
@@ -65,16 +66,17 @@
           </span>
           <span
             class="p-0.5 px-2 bg-blue-50 text-blue-700 font-semibold rounded-md"
-            >{{ count_conversation }}</span
           >
+            {{ count_conversation }}
+          </span>
         </div>
 
         <!-- List conversation -->
-        <div class="flex-1 overflow-y-auto border-t border-slate-200 pt-2">
+        <div class="flex-1 overflow-y-auto border-t theme-border pt-2">
           <div
             v-for="conv in FILTERED_CONVERSATION"
             :key="conv.fb_client_id + '_' + conv.fb_page_id"
-            class="flex items-center justify-between p-2 border-b border-slate-100 hover:bg-slate-50 cursor-pointer"
+            class="flex items-center justify-between p-2 border-b theme-border theme-hover cursor-pointer"
             @click="toggleMember(conv)"
           >
             <div class="flex items-center gap-4">
@@ -174,7 +176,7 @@ class Main {
    * @param API instance N4ServiceAppConversation
    */
   constructor(
-    private readonly API = container.resolve(N4SerivceAppConversation)
+    private readonly API = container.resolve(N4SerivceAppConversation),
   ) {}
 
   /**
@@ -212,7 +214,7 @@ class Main {
         params.filter,
         params.limit,
         params.sort,
-        params.after
+        params.after,
       )
     } catch (err) {
       console.error('Lỗi getConversation:', err)
@@ -311,7 +313,7 @@ const FILTERED_CONVERSATION = computed(() => {
         .includes(KEYWORD) ||
       $format
         .removeAccents((conv.client_phone || '').toLowerCase())
-        .includes(KEYWORD)
+        .includes(KEYWORD),
   )
 })
 
@@ -370,7 +372,7 @@ function toggleMember(conv: any) {
   /** Tìm index thành viên đã chọn */
   const INDEX = selected_members.value.findIndex(
     m =>
-      m.fb_client_id === conv.fb_client_id && m.fb_page_id === conv.fb_page_id
+      m.fb_client_id === conv.fb_client_id && m.fb_page_id === conv.fb_page_id,
   )
 
   /** Nếu đã chọn, xóa; nếu chưa chọn, push vào mảng */

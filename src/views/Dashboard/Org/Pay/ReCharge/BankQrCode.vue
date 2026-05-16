@@ -139,6 +139,8 @@ async function createQrCodeContent() {
       consumer_id: String($props.consumer_id),
       amount: Number($props.amount),
       message: $props.message,
+      // version: 'v2',
+      txn_id: $props.message,
     })
   } catch (e) {
     // báo lỗi nếu có

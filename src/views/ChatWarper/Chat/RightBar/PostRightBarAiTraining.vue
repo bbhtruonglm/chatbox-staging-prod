@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-white rounded-lg h-full flex flex-col">
+  <div class="theme-card rounded-lg h-full flex flex-col">
     <!-- Header -->
     <div>
       <div
@@ -21,7 +21,7 @@
           v-if="is_expanded"
           v-model="description"
           rows="6"
-          class="w-full border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
+          class="bg-transparent w-full border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
           placeholder="Nhập nội dung để huấn luyện AI tư vấn khách hàng"
         ></textarea>
 
@@ -30,7 +30,7 @@
           type="text"
           v-model="description"
           @focus="expandAndFocus"
-          class="w-full border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+          class="bg-transparent w-full border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
           placeholder="Nhập nội dung để huấn luyện AI tư vấn khách hàng"
         />
       </div>
@@ -41,7 +41,7 @@
           class="mt-2 flex justify-end gap-2"
         >
           <button
-            class="px-3 py-1.5 text-sm bg-gray-200 rounded-md hover:bg-gray-300"
+            class="px-3 py-1.5 text-sm theme-active rounded-md hover:bg-gray-300"
             @click="cancel"
           >
             {{ $t('Hủy') }}
@@ -55,7 +55,7 @@
         </div>
         <div
           v-else
-          class="text-xs text-slate-700"
+          class="text-xs text-slate-500"
         >
           {{
             $t(

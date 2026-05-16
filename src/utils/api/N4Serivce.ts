@@ -1,3 +1,4 @@
+import type { ConversationInfo } from '@/service/interface/app/conversation'
 import { Botx } from '@/utils/api/Botx'
 
 /**gọi API lên server n4 của chatbox */
@@ -32,15 +33,6 @@ class N4ServiceApp extends N4Serivce {
       client_id: this.#CLIENT_ID,
       ...body,
     })
-  }
-}
-
-/**dữ liệu của 1 liên hệ */
-export interface ConversationInfo {
-  /**dữ liệu chi tiết luôn có*/
-  client_bio?: {
-    fb_uid?: string
-    fb_info: object
   }
 }
 

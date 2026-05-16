@@ -5,8 +5,34 @@ import type { IPartner } from '@/utils/api/N4Service/Partner'
 import type AlertAccountLimitReached from '@/components/AlertModal/AlertAccountLimitReached.vue'
 
 export const useCommonStore = defineStore('common_store', () => {
-  /**toggle loading toàn trang */
+  /** dữ liệu thiết lập giao diện */
+  const display_setting = ref<{
+    mode: 'LIGHT' | 'DARK' | 'AUTO',
+    pattern: string
+    background_index: number
+    pattern_opacity: number
+    is_show_page_avatar: boolean
+  }>(
+    getLocal('display_setting', {
+      mode: 'LIGHT',
+      pattern: 'pattern-light-1',
+      background_index: 6,
+      pattern_opacity: 30,
+      is_show_page_avatar: true,
+    })
+  )
+
+  // lưu giao diện chat vào local
+  saveLocal(display_setting, 'display_setting')
+
+  /** toggle loading toàn trang */
   const is_loading_full_screen = ref(false)
+
+  /** gắn cờ là giao diện merchant */
+  const in_merchant = ref<boolean>(getLocal('in_merchant', false))
+
+  // lưu giao diện chat vào local
+  saveLocal(in_merchant, 'in_merchant')
 
   /**
    * load toggle từ local
@@ -29,31 +55,37 @@ export const useCommonStore = defineStore('common_store', () => {
   saveLocal(dashboard_toggle_nav, 'dashboard_toggle_nav')
   saveLocal(chat_toggle_nav, 'chat_toggle_nav')
 
-  /**trigger sự kiện đến modal báo lỗi không có gói */
+  /** trigger sự kiện đến modal báo lỗi không có gói */
   const trigger_require_pricing = ref(false)
 
-  /**action tự động thay đổi value của trigger */
+  /** action tự động thay đổi value của trigger */
   function triggerRequirePricing() {
     trigger_require_pricing.value = !trigger_require_pricing.value
   }
 
-  /**đánh dấu ext được phát hiện */
+  /** đánh dấu ext được phát hiện */
   const extension_status = ref<'NOT_FOUND' | 'FINDING' | 'FOUND'>('NOT_FOUND')
-  /**đánh dấu chuyển toàn bộ tin nhắn qua ext */
+  /** đánh dấu chuyển toàn bộ tin nhắn qua ext */
   const force_send_message_over_inbox = ref(false)
-  /**có đang kết nối vào mạng hay không */
+  /** có đang kết nối vào mạng hay không */
   const is_connected_internet = ref(true)
-  /**gắn cờ input chat đang có dữ liệu */
+  /** gắn cờ input chat đang có dữ liệu */
   const is_typing = ref(false)
-  /**gắn cờ hiển thị trả lời nhanh */
+  /** gắn cờ hiển thị trả lời nhanh */
   const is_show_quick_answer = ref(false)
-  /**gắn cờ hiển thị nhắc đến người dùng */
+  /** gắn cờ hiển thị nhắc đến người dùng */
   const is_show_mention = ref(false)
-  /**dữ liệu đối tác */
+  /** dữ liệu đối tác */
   const partner = ref<IPartner>()
   /** ref modal cảnh báo đạt giới hạn gói */
   const ref_alert_reach_limit =
     ref<InstanceType<typeof AlertAccountLimitReached>>()
+
+  /** link của trang thống kê */
+  const analytic_url = ref('')
+
+  /** có hiện cột bên phải không */
+  const show_right_pane = ref(false)
 
   return {
     is_loading_full_screen,
@@ -65,11 +97,15 @@ export const useCommonStore = defineStore('common_store', () => {
     is_connected_internet,
     is_typing,
     is_show_quick_answer,
-    /**gắn cờ hiển thị nhắc đến người dùng */
+    display_setting,
+    /** gắn cờ hiển thị nhắc đến người dùng */
     is_show_mention,
     partner,
     keyboard_shortcut,
     ref_alert_reach_limit,
+    analytic_url,
+    show_right_pane,
+    in_merchant,
 
     triggerRequirePricing,
   }

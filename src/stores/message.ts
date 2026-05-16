@@ -13,7 +13,7 @@ import type ZaloCreateGroup from '@/views/ChatWarper/Chat/CenterContent/MessageL
 import type ZaloPersonalModal from '@/views/ChatWarper/Chat/CenterContent/MessageList/MessageItem/PhoneAction/ZaloPersonalModal.vue'
 import type ZaloShareMessage from '@/views/ChatWarper/Chat/CenterContent/MessageList/MessageItem/PhoneAction/ZaloShareMessage.vue'
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, type Ref } from 'vue'
 import { remove } from 'lodash'
 
 export const useMessageStore = defineStore('message_store', () => {
@@ -25,7 +25,7 @@ export const useMessageStore = defineStore('message_store', () => {
   const map_list_message_by_id = ref(new Map<string, MessageInfo>())
 
   /**danh sách tin nhắn tạm vừa được gửi */
-  const send_message_list = ref<TempSendMessage[]>([])
+  const send_message_list = ref([]) as Ref<MessageInfo[]>
   /**danh sách timer clear tin nhắn tạm */
   const timer_clear_send_message_list = ref(new Map<string, number>())
 
@@ -84,8 +84,8 @@ export const useMessageStore = defineStore('message_store', () => {
   /**cập nhật giá trị của tin nhắn tạm */
   function updateTempMessage(
     id: string,
-    field: keyof TempSendMessage,
-    value: TempSendMessage[keyof TempSendMessage]
+    field: keyof MessageInfo,
+    value: MessageInfo[keyof MessageInfo]
   ) {
     // lặp qua toàn bộ tin nhắn tạm
     send_message_list.value.forEach(message => {

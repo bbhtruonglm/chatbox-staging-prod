@@ -1,6 +1,6 @@
 <template>
   <div
-    class="flex-grow min-w-0 bg-white rounded-md flex flex-col p-2 gap-2 overflow-y-auto"
+    class="flex-grow min-w-0 theme-card rounded-md flex flex-col p-2 gap-2 overflow-y-auto"
   >
     <div class="flex justify-between items-center border-b p-2 flex-shrink-0">
       <div class="font-semibold">
@@ -27,7 +27,7 @@
     </div>
     <div class="p-2 flex flex-col gap-2.5 flex-grow min-h-0 overflow-y-auto">
       <div
-        class="p-1 bg-gray-100 rounded-md w-fit flex items-center flex-shrink-0"
+        class="p-1 theme-card-secondary rounded-md w-fit flex items-center flex-shrink-0"
       >
         <TabItem
           v-model="current_tab"

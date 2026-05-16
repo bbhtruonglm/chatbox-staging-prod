@@ -5,9 +5,9 @@
       @click="selectExactlyTimeRange(name)"
       v-for="name of EXACTLY_TIME_RANGE"
       :class="{
-        'bg-orange-100': isActiveExactlyTime(name),
+        'theme-active-foreground': isActiveExactlyTime(name),
       }"
-      class="border-b cursor-pointer hover:bg-orange-100 rounded-lg p-2"
+      class="border-b cursor-pointer theme-border theme-hover rounded-lg p-2"
     >
       {{ $t(`v1.view.main.dashboard.chat.filter.time.${name}`) }}
     </div>
@@ -21,7 +21,7 @@
         @click="selectExactlyTimeRange('custom')"
         class="relative cursor-pointer"
       >
-        <div class="p-2 rounded-lg border">
+        <div class="p-2 rounded-lg border theme-border">
           {{
             formatDateDiplay(
               conversationStore.option_filter_page_data?.time_range?.gte
@@ -40,7 +40,7 @@
         :max_another_range="
           conversationStore.option_filter_page_data.time_range.lte
         "
-        class="border rounded-xl mt-1"
+        class="border theme-border rounded-xl mt-1"
       />
     </div>
     <div>
@@ -51,7 +51,7 @@
         @click="selectExactlyTimeRange('custom')"
         class="relative cursor-pointer"
       >
-        <div class="p-2 rounded-lg border">
+        <div class="p-2 rounded-lg border theme-border">
           {{
             formatDateDiplay(
               conversationStore.option_filter_page_data?.time_range?.lte
@@ -71,7 +71,7 @@
         "
         :min="conversationStore.option_filter_page_data.time_range.gte"
         :max="TOMORROW_TIME"
-        class="border rounded-xl mt-1"
+        class="border theme-border rounded-xl mt-1"
       />
     </div>
   </div>

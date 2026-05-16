@@ -155,18 +155,18 @@
       >
         <div class="w-fit group relative flex gap-1 items-end">
           <!-- Hiển thị text message nếu có text -->
-          <PageTempTextMessage
+          <!-- <PageTempTextMessage
             v-if="message.text"
             :text="message.text"
             :mentions="message.mentions"
             :snap_replay_message="message.snap_replay_message"
             :is_error="message.error"
-          />
+          /> -->
           <!-- :class="{
             'border border-red-500 rounded-lg': message.error,
           }" -->
           <!-- Hiển thị attachment message nếu có attachments -->
-          <PageTempAttachmentMessage
+          <!-- <PageTempAttachmentMessage
             v-else-if="message.message_attachments?.length"
             :attachments="message.message_attachments"
             :sizes="message.attachment_size"
@@ -174,9 +174,9 @@
             :class="{
               'border border-red-500': message.error,
             }"
-          />
+          /> -->
           <StaffAvatar
-            :id="chatbotUserStore.chatbot_user?.user_id"
+            :id="chatbotUserStore.getStaffId()"
             class="w-8 h-8 rounded-oval flex-shrink-0"
           />
         </div>

@@ -1,47 +1,51 @@
 <template>
-  <div class="flex items-center justify-between h-4">
-    <div class="flex items-center gap-1 flex-grow min-w-1 overflow-hidden">
+  <div class="flex items-center justify-between">
+    <div class="flex min-w-1 flex-grow items-center gap-1 overflow-hidden">
       <img
-        v-tooltip="$t('v1.view.main.dashboard.chat.action.has_reply')"
         v-if="source?.last_message_type === 'page'"
-        class="w-3 h-3 flex-shrink-0"
+        v-tooltip="$t('v1.view.main.dashboard.chat.action.has_reply')"
+        class="h-3 w-3 flex-shrink-0"
         src="@/assets/icons/reply.svg"
       />
-      <div class="flex items-center overflow-x-auto gap-1 w-full">
+      <div class="flex h-[18px] w-full items-center gap-1 overflow-x-auto scroll-hidden">
         <Label
-          class="shrink-0"
           v-for="label_id of getPreviewLabel()"
           :page_id="source?.fb_page_id"
           :label_id="label_id"
+          class="shrink-0"
         />
       </div>
-      <!-- removed +N label -->
     </div>
-    <div class="flex items-center gap-1 flex-shrink-0">
+    <div class="flex flex-shrink-0 items-center gap-1">
       <img
+        v-if="setting_conversation.is_phone_icon && source?.client_phone"
         v-tooltip.bottom="source?.client_phone"
-        v-if="source?.client_phone"
         src="@/assets/icons/phone.svg"
-        class="w-3 h-3"
+        class="h-3 w-3"
       />
-      <template v-if="isFindUid() || source?.client_bio?.fb_uid">
+      <template
+        v-if="
+          setting_conversation.is_page_source_icon &&
+          (isFindUid() || source?.client_bio?.fb_uid)
+        "
+      >
         <Loading
+          v-if="isFindUid()"
           v-tooltip.bottom="
             $t('v1.view.main.dashboard.chat.extension.findding_uid')
           "
-          v-if="isFindUid()"
           :size="12"
         />
         <img
           v-else
           v-tooltip.bottom="`Uid: ${source?.client_bio?.fb_uid}`"
           src="@/assets/icons/id.svg"
-          class="w-3 h-3"
+          class="h-3 w-3"
         />
       </template>
-      <!-- Nếu AI bật và thiết lập AI bật thì mới hiển thị icon -->
       <SparklesIcon
         v-if="
+          setting_conversation.is_ai_icon &&
           calcStatus?.(source) &&
           getPageInfo(source?.fb_page_id)?.is_active_ai_agent
         "
@@ -49,31 +53,29 @@
         v-tooltip.bottom="$t('AI đang bật')"
       />
       <div
+        v-if="setting_conversation.is_page_source_icon"
         v-tooltip.bottom="$t('v1.common.' + getPageInfo(source?.fb_page_id)?.type?.toLowerCase() as string)"
       >
         <PageTypeIcon
           :page_type="source?.platform_type"
-          class="flex-shrink-0 size-3"
+          class="size-3 flex-shrink-0"
         />
       </div>
     </div>
   </div>
-  <!-- removed popover -->
 </template>
 <script setup lang="ts">
 import { composableService } from '@/views/ChatWarper/Chat/CenterContent/UserInfo/ChatbotStatus/service'
-import { ref } from 'vue'
 import { getLabelValid, getPageInfo } from '@/service/function'
-import { useExtensionStore } from '@/stores'
+import { storeToRefs } from 'pinia'
+import { useChatbotUserStore, useExtensionStore } from '@/stores'
 
 import Label from '@/views/ChatWarper/Chat/LeftBar/Conversation/Label.vue'
 import Loading from '@/components/Loading.vue'
-import Popover from '@/components/Popover.vue'
 import PageTypeIcon from '@/components/Avatar/PageTypeIcon.vue'
 
 import { SparklesIcon } from '@heroicons/vue/24/solid'
 
-import type { ComponentRef } from '@/service/interface/vue'
 import type { ConversationInfo } from '@/service/interface/app/conversation'
 
 const $props = withDefaults(
@@ -84,15 +86,17 @@ const $props = withDefaults(
 )
 
 const extensionStore = useExtensionStore()
+const chatbotUserStore = useChatbotUserStore()
+const { setting_conversation } = storeToRefs(chatbotUserStore)
 
 /** logic bật/tắt bot */
 const { calcStatus } = composableService(true)
 
-/**ref của popover */
-const label_popover_ref = ref<ComponentRef>()
-
 /**kiểm tra xem có đang tìm uid không */
 function isFindUid() {
+  /** chỉ loading tìm uid với hội thoại Facebook */
+  if ($props.source?.platform_type !== 'FB_MESS') return false
+
   // nếu không có key thì dừng
   if (!$props.source?.data_key) return false
 

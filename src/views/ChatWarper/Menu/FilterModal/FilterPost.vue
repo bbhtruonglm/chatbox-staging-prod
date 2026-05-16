@@ -5,7 +5,7 @@
     width="450px"
     height="auto"
     position="RIGHT"
-    :back="400"
+    :class_content="'!max-h-[calc(100vh_-_100px)] overflow-auto'"
   >
     <Post
       :get-post-list="() => $main.getPostList()"
@@ -18,9 +18,9 @@
     ref="filter_dropdown_ref"
     :is_fit="false"
     width="450px"
-    height="570px"
+    height="auto"
+    max_height="calc(100vh - 100px)"
     position="RIGHT"
-    :back="400"
   >
     <Post
       :get-post-list="() => $main.getPostList()"

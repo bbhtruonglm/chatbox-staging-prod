@@ -120,4 +120,8 @@ export const routes = [
   { path: '/zalo-personal-conversation', component: ZaloPeronalCore },
   { path: '/404', component: PageNotFound },
   { path: '/:pathMatch(.*)*', name: 'NotFound', component: PageNotFound },
+  {
+    path: '/test',
+    component: () => import('@/Test.vue')
+  }
 ]

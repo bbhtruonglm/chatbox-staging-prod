@@ -179,7 +179,16 @@ export interface MessageInfo {
   /**id khách hàng */
   fb_client_id: string
   /**tin nhắn được gửi từ đâu */
-  message_type: 'page' | 'client' | 'system' | 'note' | 'activity' | 'group'
+  message_type:
+    | 'page'
+    | 'client'
+    | 'system'
+    | 'note'
+    | 'activity'
+    | 'group'
+    // các type bổ sung thêm ở FE
+    | 'group_date'
+    | 'unread'
   /**thời gian tin được gửi */
   time: string
   /**nội dung tin nhắn văn bản */
@@ -212,6 +221,14 @@ export interface MessageInfo {
   raw?: any
   /** tin nhắn đã thu hồi */
   is_undo?: boolean
+
+  // * Các dữ liệu cho tin nhắn tạm
+  /** id tạm */
+  temp_id?: string
+  /** có bị lỗi không */
+  error?: boolean
+  /** id tin nhắn */
+  message_id?: string
 }
 
 /**

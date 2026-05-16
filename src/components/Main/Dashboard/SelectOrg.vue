@@ -55,7 +55,7 @@
         <input
           ref="select_input_ref"
           type="text"
-          class="rounded-lg w-full pl-8 pr-8 h-9 focus:outline-none text-sm"
+          class="rounded-lg w-full pl-8 pr-8 h-9 focus:outline-none text-sm border"
           :placeholder="$t('v1.view.main.dashboard.select_page.select_org')"
           v-model.trim="search"
         />
@@ -66,7 +66,7 @@
       </div>
       <div
         v-show="is_show_option"
-        class="p-2 rounded-lg shadow-lg bg-white mt-1 h-auto max-h-52 overflow-y-auto absolute z-40 w-[-webkit-fill-available] flex flex-col gap-1"
+        class="border p-2 rounded-lg shadow-lg bg-white mt-1 h-auto max-h-52 overflow-y-auto absolute z-40 w-[-webkit-fill-available] flex flex-col gap-1"
       >
         <div
           v-if="is_allow_all"
@@ -126,6 +126,8 @@ import ArrowDownIcon from '@/components/Icons/ArrowDown.vue'
 import type { ComponentRef } from '@/service/interface/vue'
 import type { OrgInfo } from '@/service/interface/app/billing'
 
+const $emit = defineEmits(['change'])
+
 const $props = withDefaults(
   defineProps<{
     /**có cho phép chọn tất cả tổ chức không */
@@ -162,9 +164,12 @@ watch(() => orgStore.list_org, getCurrentOrgInfo)
 // nạp lại dữ liệu tổ chức khi có sự thay đổi tổ chức được chọn
 watch(
   () => orgStore.selected_org_id,
-  () => {
+  new_value => {
     // reset chọn page nếu không chọn tất cả tổ chức
     if (!orgStore.is_selected_all_org) pageStore.selected_page_id_list = {}
+
+    // nếu thay đổi tổ chức được chọn thì emit sự kiện
+    $emit('change', new_value)
 
     // nạp lại dữ liệu tổ chức
     getCurrentOrgInfo()
@@ -204,6 +209,9 @@ function clickOutSide($event: MouseEvent) {
 }
 /**xử lý sự kiện khi click vào một option */
 function selectOption(org: OrgInfo) {
+  /** tổ chức sẽ được chọn */
+  const NEXT_ORG_ID = org?.org_id
+
   // bỏ chọn toàn bộ tổ chức nếu đang ở chế độ cho phép chọn tất cả
   if ($props.is_allow_all) orgStore.is_selected_all_org = false
 
@@ -211,7 +219,7 @@ function selectOption(org: OrgInfo) {
   orgStore.is_first_select_org = true
 
   // gán tổ chức được chọn
-  orgStore.selected_org_id = org?.org_id
+  orgStore.selected_org_id = NEXT_ORG_ID
 
   // xoá giá trị tìm kiếm
   search.value = ''

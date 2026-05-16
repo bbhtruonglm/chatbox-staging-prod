@@ -14,18 +14,18 @@
     </template>
     <template #body>
       <div
-        class="bg-white rounded-md p-4 gap-2 grid grid-cols-2 relative w-full h-full"
+        class="theme-card rounded-md p-4 gap-2 grid grid-cols-2 relative w-full h-full"
       >
         <div class="h-full overflow-y-auto flex flex-col gap-2.5">
           <button
             v-for="noti of list_noti"
             @click="selectNoti(noti)"
             :class="{
-              'border-2 border-blue-700':
+              '!border-2 !border-blue-700 theme-card-secondary':
                 selected_noti_info.noti_id === noti.noti_id,
               'bg-slate-50': !noti.is_read,
             }"
-            class="border rounded-lg py-3 px-4 hover:bg-slate-50"
+            class="border rounded-lg py-3 px-4 theme-hover"
           >
             <div class="flex items-center gap-2.5 justify-between">
               <div class="text-sm font-medium min-w-0 truncate">
@@ -59,7 +59,7 @@
           </div>
           <div
             v-else
-            class="bg-slate-100 text-xs py-1 px-2 rounded flex-shrink-0 flex justify-between"
+            class="theme-active text-xs py-1 px-2 rounded flex-shrink-0 flex justify-between"
           >
             <div class="font-medium">
               {{ selected_noti_info.noti_title }}

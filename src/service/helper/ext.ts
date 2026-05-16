@@ -94,21 +94,29 @@ export const sendImageMessage = (
 )
 
 /**lắng nghe thông điệp của ext */
-export const listen = (proceed: ListenRes) => window.addEventListener('message', $event => {
-    /**dữ liệu được ext gửi qua */
-    const DATA = $event?.data
-    /**tên sự kiện */
-    const EVENT: ResExtEvent = DATA?.event
+export const listen = (proceed: ListenRes) => {
+    /** handler message từ extension */
+    const HANDLE_MESSAGE = ($event: MessageEvent) => {
+        /**dữ liệu được ext gửi qua */
+        const DATA = $event?.data
+        /**tên sự kiện */
+        const EVENT: ResExtEvent = DATA?.event
 
-    // chỉ xử lý thông điệp của ext
-    if (DATA?.from !== 'CONTENT_SCRIPT' || !EVENT) return true
+        // chỉ xử lý thông điệp của ext
+        if (DATA?.from !== 'CONTENT_SCRIPT' || !EVENT) return true
 
-    // trả về kết quả
-    proceed(
-        EVENT,
-        DATA?.e,
-        DATA?.r || DATA?.data || DATA?.local
-    )
+        // trả về kết quả
+        proceed(
+            EVENT,
+            DATA?.e,
+            DATA?.r || DATA?.data || DATA?.local
+        )
 
-    return true
-})
+        return true
+    }
+
+    window.addEventListener('message', HANDLE_MESSAGE)
+
+    // trả về hàm cleanup để tránh đăng ký listener trùng
+    return () => window.removeEventListener('message', HANDLE_MESSAGE)
+}

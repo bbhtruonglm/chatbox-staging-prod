@@ -1,8 +1,10 @@
 import type { PageType } from './page'
 
 export interface FilterConversation {
+  /** lọc theo tab */
+  tab?: 'UNREAD' | 'UNREPLIED'
   /**loại hội thoại */
-  conversation_type?: 'CHAT' | 'POST'
+  conversation_type?: 'CHAT' | 'POST' | 'INTERNAL'
   /**lọc hội thoại chưa đọc */
   unread_message?: 'true' | 'false'
   /**tìm kiếm hội thoại theo tên | sdt | email */
@@ -194,7 +196,7 @@ export interface QueryToggleLabelConversation extends QueryOneConversation {
 }
 
 /**đầu vào api cập nhật thông tin khách hàng */
-export interface QueryUpdateÌnoConversation extends QueryOneConversation {
+export interface QueryUpdateInfoConversation extends QueryOneConversation {
   /**sdt */
   client_phone?: string
   /**email */

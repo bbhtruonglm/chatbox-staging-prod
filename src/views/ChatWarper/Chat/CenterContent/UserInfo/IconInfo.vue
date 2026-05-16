@@ -24,13 +24,13 @@
       v-tooltip="last_client_email"
       class="w-3 h-3 text-lime-500"
     />
-    <div
+    <!-- <div
       v-if="last_emotion && $emotion.isHighlight(last_emotion)"
       @click="$clipboard.copy(last_emotion)"
       class="text-xs"
     >
       {{ $emotion.getIcon(last_emotion) }}
-    </div>
+    </div> -->
   </div>
 </template>
 <script setup lang="ts">

@@ -3,7 +3,8 @@
     class "container-fluid" để intergrate với ext, không phải là bootstrap
     không được xoá
   -->
-  <div class="w-dvw h-dvh container-fluid bg-gradient-primary">
+  <!-- <div class="w-dvw h-dvh container-fluid bg-gradient-primary"> -->
+  <div class="w-dvw h-dvh container-fluid">
     <Network />
     <AdBlocker />
     <Loading
@@ -20,20 +21,26 @@
 import { useCommonStore, useOrgStore } from '@/stores'
 import { useKeyboardShortcut } from '@/views/composables/useKeyboardShortcut'
 import { container } from 'tsyringe'
-import { onMounted } from 'vue'
+import { onMounted, watch } from 'vue'
 import { setItem } from './service/helper/localStorage'
 import { N4SerivcePublicPartner } from './utils/api/N4Service/Partner'
 import { error } from './utils/decorator/Error'
 import { Toast } from './utils/helper/Alert/Toast'
 import { QueryString, type IQueryString } from './utils/helper/QueryString'
+import { applyTheme } from '@bbhhainx/chat-core'
+// import { applyTheme } from '@chat'
 
 import Loading from '@/components/Loading.vue'
 import AdBlocker from './components/AdBlocker.vue'
 import Network from './components/Network.vue'
+import { useRoute, useRouter } from 'vue-router'
 
 const commonStore = useCommonStore()
 const orgStore = useOrgStore()
 const $toast = container.resolve(Toast)
+
+const router = useRouter()
+const route = useRoute()
 
 useKeyboardShortcut()
 
@@ -140,7 +147,27 @@ $main.saveCliendID()
 $main.saveOrgId()
 
 // lấy thông tin đối tác khi component được mount
-onMounted($main.getPartnerInfo)
+onMounted(() => {
+  $main.getPartnerInfo()
+
+  // set cờ merchant
+  router.isReady().then(() => {
+    commonStore.in_merchant = Boolean(route.query.merchant === 'true')
+  })
+})
+
+/**
+ * lắng nghe sự thay đổi của display_setting.mode
+ */
+watch(
+  () => commonStore.display_setting.mode,
+  (new_value) => {
+    applyTheme(new_value)
+  },
+  {
+    immediate: true
+  }
+)
 </script>
 
 <style lang="scss">

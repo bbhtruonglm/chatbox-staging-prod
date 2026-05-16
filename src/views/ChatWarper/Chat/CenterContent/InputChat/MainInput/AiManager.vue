@@ -13,7 +13,6 @@
     height="auto"
     :is_fit="false"
     position="TOP"
-    :back="20"
     :distance="10"
     class_content="flex flex-col gap-1"
   >

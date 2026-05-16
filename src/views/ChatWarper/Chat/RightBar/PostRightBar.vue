@@ -1,8 +1,7 @@
 <template>
   <div class="flex flex-col gap-3">
-    <!-- <PostRightBarSetting /> -->
-    <!-- <PostRightBarAiTraining /> -->
-    <div class="bg-white rounded-lg h-full flex flex-col">
+    <PostRightBarAiTraining />
+    <div class="theme-card rounded-lg h-full flex flex-col">
       <div
         class="py-2 px-3 border-b flex-shrink-0 text-sm font-semibold flex items-center justify-between"
       >
@@ -22,12 +21,12 @@
   </div>
 </template>
 <script setup lang="ts">
+import { ref } from 'vue'
+
 import PostAnalytic from '@/views/ChatWarper/Chat/RightBar/PostAnalytic.vue'
+import PostRightBarAiTraining from './PostRightBarAiTraining.vue'
 
 import { ChartBarIcon, ArrowPathIcon } from '@heroicons/vue/24/solid'
-import { ref } from 'vue'
-import PostRightBarSetting from './PostRightBarSetting.vue'
-import PostRightBarAiTraining from './PostRightBarAiTraining.vue'
 
 /**tham chiếu đến thống kê post */
 const ref_post_analytic = ref<InstanceType<typeof PostAnalytic>>()

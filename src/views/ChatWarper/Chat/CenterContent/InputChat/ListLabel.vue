@@ -1,5 +1,5 @@
 <template>
-  <div class="py-1">
+  <div class="pt-1">
     <div
       v-show="labels?.length"
       id="chat__select-label"
@@ -24,21 +24,13 @@
             @click="$main.toggleLabel(label._id)"
           />
         </div>
-        <!-- <button
-          v-if="orgStore.isAdminOrg()"
-          v-tooltip="$t('v1.common.setting')"
-          @click="$external_site.openPageSetting('dialogue-tag')"
-          class="rounded border border-slate-700 w-6 h-6 flex-shrink-0 justify-center items-center hidden group-hover:flex"
-        >
-          <CogBoldIcon class="w-4 h-4 text-slate-700" />
-        </button> -->
         <button
           v-tooltip="
             is_expand_label ? $t('v1.common.contract') : $t('v1.common.expand')
           "
           v-if="total_over_label"
           @click="$main.expandList"
-          class="rounded border border-slate-500 text-slate-700 w-7 h-6 flex-shrink-0 justify-center items-center flex text-xs font-semibold"
+          class="bg-white rounded border border-slate-500 text-slate-700 w-7 h-6 flex-shrink-0 justify-center items-center flex text-xs font-semibold"
         >
           <ArrowDownIcon
             v-if="is_expand_label"
@@ -53,7 +45,6 @@
 <script setup lang="ts">
 import { computed, ref, watch, nextTick } from 'vue'
 import { sortBy, values } from 'lodash'
-import { useCommonStore, useConversationStore, usePageStore } from '@/stores'
 import { loading } from '@/utils/decorator/Loading'
 import { error } from '@/utils/decorator/Error'
 import { container } from 'tsyringe'
@@ -70,11 +61,21 @@ import {
   CountHiddenItem,
   type ICounHiddenItem,
 } from '@/utils/helper/CountHiddenItem'
+import type { ConversationInfo } from '@/service/interface/app/conversation'
+import type { PageData } from '@/service/interface/app/page'
+
+const props = defineProps<{
+  /** hội thoại hiện tại */
+  conversation: ConversationInfo
+  /** dữ liệu page hiện tại */
+  page_data?: PageData
+}>()
+
 /** Khai báo các dữ liệu từ store */
-const commonStore = useCommonStore()
-const conversationStore = useConversationStore()
 const $toast = container.resolve(Toast)
-const pageStore = usePageStore()
+
+/** định nghĩa model keyboard_shortcut  */
+const keyboard_shortcut = defineModel<string>('keyboard_shortcut', { default: '' })
 
 /**tham chiếu đến div danh sách nhãn */
 const ref_labels = ref<HTMLDivElement>()
@@ -96,13 +97,11 @@ const display_total_over_label = computed(() => {
 })
 /** danh sách nhãn của page hiện tại */
 const current_page_labels = computed(() => {
-  const PAGE_ID = conversationStore.select_conversation?.fb_page_id || ''
-
-  return pageStore.selected_page_list_info?.[PAGE_ID]?.label_list
+  return props.page_data?.label_list
 })
 /** chữ ký nhãn đang active để tránh watch lặp do đổi reference mảng */
 const active_label_signature = computed(() => {
-  return [...(conversationStore.getActiveLabelIds() || [])].sort().join('|')
+  return [...($main.getActiveLabelIds() || [])].sort().join('|')
 })
 
 class Main {
@@ -121,11 +120,12 @@ class Main {
     if (!label_id) return undefined
 
     /**trạng thái nhãn có được chọn hay không */
-    const iS_SELECT = conversationStore.getActiveLabelIds()?.includes(label_id)
+    const IS_SELECT = this.getActiveLabelIds()?.includes(label_id)
 
     /** trả về trạng thái nhãn có được chọn hay không */
-    return iS_SELECT ? 1 : undefined
+    return IS_SELECT ? 1 : undefined
   }
+
   /**đếm số nhãn bị ẩn bởi css flex overflow-hidden  */
   private async countHiddenLabel(): Promise<void> {
     const REQUEST_ID = ++count_hidden_request_id.value
@@ -153,11 +153,8 @@ class Main {
 
   /**khởi tạo danh sách nhãn của trang của hội thoại đang chọn */
   getLabels(): void {
-    /**dữ liệu nhãn gốc của trang */
-    const MAP_LABELS = conversationStore.getLabels() || {}
-
     /** tạo dữ liệu render riêng để tránh mutate store */
-    const DISPLAY_LABELS = values(MAP_LABELS).map(
+    const DISPLAY_LABELS = values(current_page_labels.value).map(
       (label): ICustomLabel => {
       return {
         ...label,
@@ -175,6 +172,18 @@ class Main {
     /** đếm số nhãn bị ẩn */
     this.countHiddenLabel()
   }
+
+  /**
+   * danh sách các id nhãn đang kích hoạt của hội thoại
+   * - đã lọc ra các id nhãn đã bị xóa
+   */
+  getActiveLabelIds() {
+    // lọc các id nhãn còn tồn tại của trang
+    return props.conversation?.label_id?.filter(
+      label_id => current_page_labels.value?.[label_id]
+    )
+  }
+
   /**xem toàn bộ, chỉ xem 1 dòng của nhãn */
   expandList() {
     /** nếu về chế độ 1 dòng, thì scroll về đầu */
@@ -184,6 +193,7 @@ class Main {
     /** thay đổi trạng thái hiển thị */
     is_expand_label.value = !is_expand_label.value
   }
+
   /**
    * thay đổi gắn nhãn của khách hàng này
    * @param label_id id của nhãn
@@ -193,15 +203,15 @@ class Main {
   async toggleLabel(label_id: string) {
     /** nếu không có trang hoặc khách hàng nào được chọn thì không thực hiện */
     if (
-      !conversationStore.select_conversation?.fb_page_id ||
-      !conversationStore.select_conversation?.fb_client_id
+      !props.conversation?.fb_page_id ||
+      !props.conversation?.fb_client_id
     )
       return
 
     /** thực hiện thay đổi nhãn */
     await new N4SerivceAppOneConversation(
-      conversationStore.select_conversation?.fb_page_id as string,
-      conversationStore.select_conversation?.fb_client_id as string
+      props.conversation?.fb_page_id as string,
+      props.conversation?.fb_client_id as string
     ).toggleLabel(label_id)
   }
 }
@@ -210,7 +220,7 @@ const $main = new Main()
 /** lấy danh sách nhãn khi đổi hội thoại, đổi label của hội thoại, hoặc page hiện tại thay label */
 watch(
   [
-    () => conversationStore.select_conversation?.data_key || '',
+    () => props.conversation?.data_key || '',
     () => current_page_labels.value,
     () => active_label_signature.value,
   ],
@@ -220,14 +230,14 @@ watch(
 
 /** lắng nghe trạng thái phím tắt */
 watch(
-  () => commonStore.keyboard_shortcut,
+  () => keyboard_shortcut.value,
   value => {
     /** nếu không liên quan đến ẩn/hiện danh sách nhãn thì bỏ qua */
     if (value !== 'toggle_labels') return
     $main.expandList()
 
     /** reset trạng thái phím tắt */
-    commonStore.keyboard_shortcut = ''
+    keyboard_shortcut.value = ''
   }
 )
 </script>

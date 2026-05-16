@@ -198,7 +198,6 @@
         >
           <Toggle
             v-model="org_is_auto_charge"
-            class_toggle="peer-checked:bg-black"
           >
             <span class="text-green-600">
               {{ $t('v1.view.main.dashboard.org.pay.auto_pay') }}

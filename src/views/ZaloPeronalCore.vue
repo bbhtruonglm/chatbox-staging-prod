@@ -3,17 +3,17 @@
     class="bg-gray-100 rounded-xl p-2 flex flex-col relative w-full h-full overflow-hidden gap-2 text-sm"
     @dragover.prevent
     @drop="onDropFile"
-    v-if="view"
   >
     <div
-      class="bg-white py-2 px-3 rounded-lg gap-2 flex items-center text-slate-700"
+      class="bg-white py-2 px-3 rounded-lg gap-2 w-full flex items-center text-slate-700"
     >
-      {{ $t('Chọn Zalo cá nhân:') }}
+      <p class="flex-shrink-0">{{ $t('Chọn Zalo cá nhân:') }}</p>
       <button
-        class="flex items-center gap-2 flex-grow"
+        v-if="!is_loading_list_page"
+        class="flex items-center gap-2 flex-grow min-w-0 text-start"
         @click="zalo_personal_dropdown_ref?.toggleDropdown"
       >
-        <div class="flex flex-grow items-center gap-1">
+        <div class="flex flex-grow min-w-0 items-center gap-1">
           <ExclamationTriangleIcon
             v-if="selected_page_info?.is_disconnected"
             v-tooltip.bottom="$t('Trang mất quyền truy cập, cần cấp lại quyền')"
@@ -25,14 +25,26 @@
             :page_info="selected_page_info"
             class="rounded-full size-5"
           />
-          <p class="text-slate-700">{{ selected_page_info?.name }}</p>
+          <p class="text-slate-700 truncate flex-grow">
+            {{ selected_page_info?.name }}
+          </p>
+        </div>
+        <ChevronDownIcon class="size-5" />
+      </button>
+      <button
+        v-else
+        class="flex items-center gap-2 flex-grow min-w-0 text-start"
+      >
+        <div class="flex flex-grow min-w-0 items-center gap-1">
+          <div class="size-5 rounded-full bg-slate-200 animate-pulse"></div>
+          <div class="h-3.5 bg-slate-200 rounded w-20 animate-pulse"></div>
         </div>
         <ChevronDownIcon class="size-5" />
       </button>
     </div>
 
     <!-- Màn tìm kiếm zalo cá nhân -->
-    <template v-if="view === 'SEARCH'">
+    <template v-if="view === 'SEARCH' || !view">
       <!-- input tìm kiếm -->
       <section class="w-full relative border-b pb-2">
         <MagnifyingGlassIcon
@@ -40,7 +52,7 @@
         />
         <input
           ref="search_input"
-          v-model="query_string_data.phone"
+          v-model="phone"
           type="text"
           :placeholder="$t('Nhập số điện thoại muốn tìm kiếm')"
           class="placeholder:text-slate-500 pl-9 py-2 pr-4 outline-none rounded-lg w-full"
@@ -51,7 +63,7 @@
       <section>
         <!-- Màn trống ban đầu -->
         <div
-          v-if="isEmpty(zalo_personal) && !query_string_data.phone"
+          v-if="isEmpty(zalo_personal) && !phone"
           class="flex flex-col items-center pt-8 gap-2.5"
         >
           <SearchContactIcon class="size-20" />
@@ -61,7 +73,7 @@
         </div>
         <!-- đang chạy api tìm thông tin bằng số -->
         <div
-          v-if="is_loading_zalo_personal"
+          v-if="(is_loading_zalo_personal || is_loading_list_page) && phone"
           class="p-3"
         >
           <div
@@ -78,10 +90,9 @@
         <ul v-if="!isEmpty(zalo_personal) && !is_loading_zalo_personal">
           <li class="bg-white rounded-lg flex gap-2 items-center py-3 px-4">
             <ClientAvatar
-              :conversation="conversationStore.select_conversation"
+              :conversation="conversation_data"
               :avatar="
-                conversationStore.select_conversation?.client_avatar ||
-                zalo_personal.client_avatar
+                conversation_data?.client_avatar || zalo_personal.client_avatar
               "
               class="w-8 h-8"
             />
@@ -112,16 +123,18 @@
         <div
           v-if="
             isEmpty(zalo_personal) &&
-            query_string_data.phone &&
-            !is_loading_zalo_personal
+            phone &&
+            !is_loading_zalo_personal &&
+            !is_loading_list_page
           "
-          class="flex flex-col items-center pt-5"
+          class="flex flex-col items-center pt-5 text-center px-[20px]"
         >
           <img
+            v-if="!error_message"
             :src="EmptyContact"
             class="size-24"
           />
-          <p>{{ $t('Không có khách hàng') }}</p>
+          <p>{{ error_message || $t('Không có khách hàng') }}</p>
         </div>
       </section>
     </template>
@@ -131,10 +144,9 @@
       <!-- Thông tin khách hàng -->
       <section class="py-3 px-4 flex gap-2 bg-white rounded-xl items-center">
         <ClientAvatar
-          :conversation="conversationStore.select_conversation"
+          :conversation="conversation_data"
           :avatar="
-            conversationStore.select_conversation?.client_avatar ||
-            zalo_personal.client_avatar
+            conversation_data?.client_avatar || zalo_personal.client_avatar
           "
           class="w-8 h-8 flex-shrink-0"
         />
@@ -146,16 +158,14 @@
             <div class="flex gap-2 font-medium justify-between">
               <p class="flex items-center gap-2">
                 {{
-                  conversationStore.select_conversation?.client_name ||
-                  zalo_personal?.client_name
+                  conversation_data?.client_name || zalo_personal?.client_name
                 }}
                 <PencilSquareIcon
-                  v-if="conversationStore.select_conversation"
+                  v-if="conversation_data"
                   @click="
                     () => {
                       is_edit_name = true
-                      alias_name =
-                        conversationStore.select_conversation?.client_name || ''
+                      alias_name = conversation_data?.client_name || ''
                     }
                   "
                   class="size-4 cursor-pointer text-slate-500"
@@ -175,14 +185,12 @@
               <p
                 class="flex gap-1"
                 v-if="
-                  conversationStore.select_conversation?.client_phone ||
-                  zalo_personal?.client_phone
+                  conversation_data?.client_phone || zalo_personal?.client_phone
                 "
               >
                 <PhoneIcon class="size-4 flex-shrink-0" />
                 {{
-                  conversationStore.select_conversation?.client_phone ||
-                  zalo_personal?.client_phone
+                  conversation_data?.client_phone || zalo_personal?.client_phone
                 }}
               </p>
               <p
@@ -203,7 +211,7 @@
           </template>
 
           <div
-            v-else-if="conversationStore.select_conversation"
+            v-else-if="conversation_data"
             class="flex justify-between items-center flex-1 font-medium"
           >
             <div class="flex flex-col">
@@ -238,27 +246,92 @@
           <div class="bg-blue-100 rounded-full h-3 w-28"></div>
         </div>
       </section>
-
-      <!-- Hội thoại -->
-      <div class="h-full w-full overflow-hidden">
-        <MessageList
-          v-if="conversationStore.select_conversation"
-          class="h-full"
-        />
-        <div
-          v-else
-          class="flex flex-col gap-2.5 items-center justify-center h-full"
+      <Theme
+        class="w-full h-full flex flex-col rounded-lg overflow-hidden shadow-2xl"
+        :pattern="commonStore.display_setting.pattern"
+        :mode="commonStore.display_setting.mode"
+        :background_index="commonStore.display_setting.background_index"
+        :pattern_opacity="commonStore.display_setting.pattern_opacity"
+      >
+        <!-- Hội thoại -->
+        <MessageComponent
+          ref="message_component"
+          v-if="message_api"
+          :is_loading="
+            !conversation_data || !page_data || !pageStore.all_page_list
+          "
+          :host="{
+            socket: SOCKET,
+          }"
+          :message_config="{
+            host: {
+              media_cdn: MEDIA_HOST,
+              img_host: IMAGE_HOST,
+              proxy_video: PROXY_VIDEO_HOST,
+            },
+            page_data,
+            org_info: orgStore.selected_org_info,
+            page_message_align: 'RIGHT',
+            events: {
+              loadMessage: message_api.message_apis.loadMessage,
+              openForwardModal: () => {},
+              undoMessage: message_api.message_apis.undoMessage,
+              toggleComment: message_api.message_apis.toggleComment,
+              getReplyComment: message_api.message_apis.getReplyComment,
+              openViewMessageModal: () => {},
+              handleAction: () => {},
+              sendReaction: message_api.message_apis.sendReaction,
+              openCallCenter: () => {},
+              openZaloPersonalModal: () => {},
+              canOpenZaloPersonal: () => false,
+            },
+          }"
+          :input_config="{
+            host: {
+              media_cdn: MEDIA_HOST,
+            },
+            all_page_list: pageStore.all_page_list,
+            page_data,
+            chatbot_user: chatbotUserStore.chatbot_user,
+            extension_status: 'NOT_FOUND',
+            list_os: orgStore.list_os,
+            events: {
+              openPageSettingQuickAnswer: () => {},
+              readAnswer: message_api.input_apis.readAnswer,
+              textTranslate: message_api.input_apis.textTranslate,
+              genAnswer: message_api.input_apis.genAnswer,
+              isAdminOrg: orgStore.isAdminOrg,
+              getGroupMembers: message_api.input_apis.getGroupMembers,
+              clearAiAnswer: message_api.input_apis.clearAiAnswer,
+              sendMessage: message_api.input_apis.sendMessage,
+              sendComment: message_api.input_apis.sendComment,
+              sendPrivateReply: message_api.input_apis.sendPrivateReply,
+              sendReplyMessage: message_api.input_apis.sendReplyMessage,
+              getUploadTempFileUrl: message_api.input_apis.getUploadTempFileUrl,
+              uploadTempFile: message_api.input_apis.uploadTempFile,
+              updateConversationList: (path: string[], value?: string) => {
+                set(conversationStore.conversation_list, path, value)
+              },
+              readFileAlbum: message_api.input_apis.readFileAlbum,
+              readFolderAlbum: message_api.input_apis.readFolderAlbum,
+              updateFolderAlbum: message_api.input_apis.updateFolderAlbum,
+              deleteFolderAlbum: message_api.input_apis.deleteFolderAlbum,
+              createFolderAlbum: message_api.input_apis.createFolderAlbum,
+              deleteFileAlbum: message_api.input_apis.deleteFileAlbum,
+              uploadFileAlbum: message_api.input_apis.uploadFileAlbum,
+            },
+          }"
+          v-model:conversation="conversation_data"
         >
-          <img
-            src="@/assets/imgs/empty-conversation.png"
-            class="w-24 h-24"
-          />
-          <p>{{ $t('Không có lịch sử hội thoại') }}</p>
-        </div>
-      </div>
-
-      <!-- ô nhập chat -->
-      <InputChat :client_id="client_id" />
+          <template #message-list-labels>
+            <ListLabel
+              v-if="conversation_data"
+              :conversation="conversation_data"
+              :page_data="page_data"
+            />
+          </template>
+        </MessageComponent>
+      </Theme>
 
       <button
         v-if="view === 'FRIEND_REQUEST' && !is_loading_zalo_personal"
@@ -312,6 +385,7 @@
 import { read_os } from '@/service/api/chatbox/billing'
 import { read_conversation } from '@/service/api/chatbox/n4-service'
 import { nonAccentVn } from '@/service/helper/format'
+import { getItem } from '@/service/helper/localStorage'
 import {
   useChatbotUserStore,
   useCommonStore,
@@ -320,43 +394,59 @@ import {
   useOrgStore,
   usePageStore,
 } from '@/stores'
+import { N4SerivceAppOneConversation } from '@/utils/api/N4Service/Conversation'
 import { N4SerivceAppPage } from '@/utils/api/N4Service/Page'
 import { N4SerivceAppZaloPersonal } from '@/utils/api/N4Service/ZaloPersonal'
 import { error } from '@/utils/decorator/Error'
 import { loadingV2 } from '@/utils/decorator/Loading'
 import { Toast } from '@/utils/helper/Alert/Toast'
 import { LocalStorage } from '@/utils/helper/LocalStorage'
-import { QueryString } from '@/utils/helper/QueryString'
-import { Socket } from '@/utils/helper/Socket'
 import { composableService as inputComposableService } from '@/views/ChatWarper/Chat/CenterContent/InputChat/MainInput/service'
 import { useDropFile } from '@/views/composable'
-import { debounce, isEmpty, pick, size } from 'lodash'
+// import {
+//   MessageComponent,
+//   Theme,
+//   createPortableChatApi,
+//   type PortableChatApiConfig,
+// } from '@chat'
+import {
+  MessageComponent,
+  Theme,
+  createPortableChatApi,
+  type PortableChatApiConfig,
+} from '@bbhhainx/chat-core'
+import { debounce, forEach, isEmpty, set } from 'lodash'
 import { container } from 'tsyringe'
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import ClientAvatar from '@/components/Avatar/ClientAvatar.vue'
 import PageAvatar from '@/components/Avatar/PageAvatar.vue'
 import Dropdown from '@/components/Dropdown.vue'
-import InputChat from '@/views/ChatWarper/Chat/CenterContent/InputChat.vue'
-import MessageList from '@/views/ChatWarper/Chat/CenterContent/MessageList.vue'
+import ListLabel from '@/views/ChatWarper/Chat/CenterContent/InputChat/ListLabel.vue'
 
 import EmptyContact from '@/assets/imgs/empty-conversation.png'
 import GenderIcon from '@/components/Icons/GenderIcon.vue'
 import SearchContactIcon from '@/components/Icons/SearchContactIcon.vue'
-import { ChevronDownIcon, MagnifyingGlassIcon } from '@heroicons/vue/24/outline'
+import {
+  ChevronDownIcon,
+  ExclamationTriangleIcon,
+  MagnifyingGlassIcon,
+} from '@heroicons/vue/24/outline'
 import { CakeIcon, PencilSquareIcon, PhoneIcon } from '@heroicons/vue/24/solid'
 
 import type { OwnerShipInfo } from '@/service/interface/app/billing'
-import type { SocketEvent } from '@/service/interface/app/common'
 import type { ConversationInfo } from '@/service/interface/app/conversation'
-import type { MessageInfo } from '@/service/interface/app/message'
-import type { IPage } from '@/service/interface/app/page'
-import type { FacebookCommentPost } from '@/service/interface/app/post'
-import type { StaffSocket } from '@/service/interface/app/staff'
+import type { IPage, PageData, PageList } from '@/service/interface/app/page'
 import type { IAlert } from '@/utils/helper/Alert/type'
-import { N4SerivceAppOneConversation } from '@/utils/api/N4Service/Conversation'
-import { dispatchEventBus } from '@/event'
+
+const props = defineProps<{
+  page_id?: string
+  actual_client_id?: string
+  actual_page_id?: string
+  message_id?: string
+  phone?: string
+}>()
 
 const orgStore = useOrgStore()
 const pageStore = usePageStore()
@@ -369,32 +459,40 @@ const { t: $t } = useI18n()
 
 // composable
 const { onDropFile } = useDropFile()
-const { InputService } = inputComposableService()
 
-/** đối tượng thao tác với query string */
-const $query_string = container.resolve(QueryString)
+const SOCKET = $env.host.n3_socket
+/** Host media cdn của chat. */
+const MEDIA_HOST = $env.host.media_cdn
+/** Host avatar ảnh của chat. */
+const IMAGE_HOST = $env.img_host
+/** Host proxy video của chat. */
+const PROXY_VIDEO_HOST = $env.host.proxy_video
 
 /** dữ liệu trong local storage */
 const $local_storage = container.resolve(LocalStorage)
-const $input_service = container.resolve(InputService)
-
-/** socket chatbot */
-const $socket = container.resolve(Socket)
 
 /** màn hiển thị */
-const view = ref<'SEARCH' | 'CHAT' | 'FRIEND_REQUEST' | ''>('')
+const view = defineModel<'SEARCH' | 'CHAT' | 'FRIEND_REQUEST' | ''>('view', {
+  default: '',
+})
+/** ref message component */
+const message_component = ref<InstanceType<typeof MessageComponent>>()
 
+/** loading danh sách page */
+const is_loading_list_page = ref(false)
 /** trạng thái loading dữ liệu trang zalo cá nhân */
 const is_loading_zalo_personal = ref(false)
 
-/** dữ liệu query string */
-const query_string_data = ref({
-  org_id: '',
-  actual_client_id: '',
-  actual_page_id: '',
-  message_id: '',
-  phone: '',
-})
+/** Dữ liệu conversation hiện tại. */
+const conversation_data = ref<ConversationInfo>()
+/** Dữ liệu page hiện tại. */
+const page_data = ref<PageData>()
+/** danh sách page đang được chọn */
+const selected_page_list_info = ref<PageList>({})
+/** Bộ API portable dùng cho chat-core. */
+const message_api = ref<ReturnType<typeof createPortableChatApi> | null>(null)
+/** số điện thoại search khách */
+const phone = ref(props.phone || '')
 
 /** id của khách hàng ở page zalo được chọn */
 const client_id = ref('')
@@ -409,6 +507,9 @@ const zalo_personal = ref<{
   client_phone?: string
   is_accept_friend_request?: boolean
 }>({})
+
+/** Thông báo lỗi khi tìm kiếm hoặc thao tác với tài khoản Zalo cá nhân.*/
+const error_message = ref('')
 
 /**id trang được chọn */
 const selected_page_id = ref<string>()
@@ -429,11 +530,36 @@ const zalo_personal_dropdown_ref = ref<InstanceType<typeof Dropdown>>()
 /** từ khóa tìm kiếm zalo cá nhân */
 const search_zalo_personal = ref('')
 
+/**ref search input */
+const search_input = ref<HTMLInputElement | null>(null)
+
 /** chỉnh sửa tên gợi nhớ */
 const is_edit_name = ref(false)
 
 /** tên gợi nhớ */
 const alias_name = ref('')
+
+/** Lấy ô nhập tin nhắn mà chat-core render ra để thao tác theo DOM. */
+function getChatInputElement() {
+  return document.querySelector<HTMLElement>(
+    '[data-testid="chat-text-input-message"], #chat-text-input-message',
+  )
+}
+
+/** Đọc nội dung hiện tại trong ô nhập tin nhắn. */
+function getChatDraft() {
+  return getChatInputElement()?.innerText?.trim() || ''
+}
+
+/** Ghi nội dung vào ô nhập và bắn event input để chat-core đồng bộ state. */
+function setChatDraft(value: string) {
+  const INPUT = getChatInputElement()
+
+  if (!INPUT) return
+
+  INPUT.textContent = value
+  INPUT.dispatchEvent(new Event('input', { bubbles: true }))
+}
 
 class CustomToast extends Toast implements IAlert {
   public error(message: any): void {
@@ -471,21 +597,21 @@ class Main {
     if (!selected_page_id.value) return
 
     // gửi kết bạn bằng id nếu có message_id
-    if (query_string_data.value.message_id) {
+    if (props.message_id) {
       await this.API.sendFriendRequestByMessage({
         page_id: selected_page_id.value,
-        actual_page_id: query_string_data.value.actual_page_id,
-        actual_client_id: query_string_data.value.actual_client_id,
-        message_id: query_string_data.value.message_id,
-        message: $input_service.getInputText() || undefined,
+        actual_page_id: props.actual_page_id || '',
+        actual_client_id: props.actual_client_id || '',
+        message_id: props.message_id,
+        message: getChatDraft() || undefined,
       })
     }
     // nếu không có thì gửi lời mời kết bạn bằng số điện thoại
     else {
       await this.API.sendFriendRequest({
         page_id: selected_page_id.value,
-        phone: query_string_data.value.phone,
-        message: $input_service.getInputText() || undefined,
+        phone: phone.value,
+        message: getChatDraft() || undefined,
       })
     }
 
@@ -504,13 +630,14 @@ class Main {
   }
 
   /** lấy danh sách các page zalo của tổ chức hiện tại */
+  @loadingV2(is_loading_list_page, 'value')
   @error($toast)
   async getZaloPage() {
     // nếu không có id tổ chức thì thôi
-    if (!query_string_data.value.org_id) return
+    if (!orgStore.selected_org_id) return
 
     /**lấy danh sách trang của tổ chức hiện tại */
-    const OSS = await read_os(query_string_data.value.org_id)
+    const OSS = await read_os(orgStore.selected_org_id)
 
     // lưu danh sách các trang của tổ chức hiện tại vào store
     orgStore.list_os = OSS
@@ -536,95 +663,33 @@ class Main {
     if (!selected_page_id.value) {
       selected_page_id.value = zlp_oss.value?.[0]?.page_id
     }
-
-    // kết nối socket để nhận tin nhắn realtime
-    $socket.connect(
-      $env.host.n3_socket,
-      zlp_oss.value?.map(os => os.page_id || ''),
-      chatbotUserStore.chatbot_user?.fb_staff_id || '',
-      this.handleSocketEvent,
-    )
   }
 
-  /** hàm xử lý sự kiện nhận được từ socket */
-  handleSocketEvent(socket_data: {
-    /**dữ liệu của khách hàng */
-    conversation?: ConversationInfo
-    /**dữ liệu tin nhắn mới */
-    message?: MessageInfo
-    /**dữ liệu nhân viên */
-    staff?: StaffSocket
-    /**tên sự kiện */
-    event?: SocketEvent
-    /**dữ liệu tin nhắn cần cập nhật */
-    update_message?: MessageInfo
-    /**dữ liệu comment cập nhật */
-    update_comment?: FacebookCommentPost
-  }) {
-    let { message, update_message, conversation } = socket_data
-
-    // gửi thông điệp đến component xử lý danh sách hội thoại - ở đây cần xử lý khi update các nhãn
-    if (size(conversation)) {
-      // nếu không có hội thoại nào được chọn thì thôi
-      if (!conversationStore.select_conversation) return
-
-      /*các giá trị cần update */
-      const UPDATED_VALUE = pick(conversation, [
-        // 'client_name',
-        // 'client_bio',
-        // 'client_phone',
-        'user_id',
-        'fb_staff_id',
-        'label_id',
-        'last_read_message',
-        'staff_read',
-      ])
-
-      // thay đổi obj nhưng không cho trigger watch
-      Object.assign(conversationStore.select_conversation, UPDATED_VALUE)
-    }
-
-    // gửi thông điệp đến component xử lý hiển thị danh sách tin nhắn
-    if (size(message)) {
-      // socket tin nhắn mới cho các component
-      dispatchEventBus('chatbox_socket_message', { detail: message })
-      // window.dispatchEvent(
-      //   new CustomEvent('chatbox_socket_message', { detail: message })
-      // )
-    }
-
-    // gửi thông điệp cập nhật tin nhắn đã có
-    if (size(update_message)) {
-      dispatchEventBus('chatbox_socket_update_message', {
-        detail: update_message,
-      })
-
-      // window.dispatchEvent(
-      //   new CustomEvent('chatbox_socket_update_message', {
-      //     detail: update_message,
-      //   })
-      // )
-    }
-  }
-
-  /** lấy thông tin của các page zalo */
-  // @loadingV2(commonStore, 'is_loading_full_screen')
+  /** lấy dữ liệu chi tiết của page */
   @error($toast)
   async getZaloPageInfo() {
     /** danh sách các page zalo */
     const SELECTED_PAGE_IDS = zlp_oss.value?.map(os => os.page_id || '')
 
     /** nếu không có page nào thì thôi */
-    if (!SELECTED_PAGE_IDS) return
+    if (!SELECTED_PAGE_IDS || !orgStore.selected_org_id) return
 
     /**dữ liệu các trang đang chọn */
     const PAGES = await new N4SerivceAppPage().getPageInfoToChat(
-      query_string_data.value.org_id,
+      orgStore.selected_org_id,
       SELECTED_PAGE_IDS,
       true,
     )
 
-    pageStore.selected_page_list_info = PAGES
+    selected_page_list_info.value = PAGES
+
+    // lấy thông tin page đang được chọn
+    forEach(selected_page_list_info.value, page => {
+      if (page.page?.fb_page_id === selected_page_id.value) {
+        page_data.value = page
+        return
+      }
+    })
   }
 
   /** lấy id trang zalo được chọn của tổ chức hiện tại lưu trong localstorage */
@@ -642,25 +707,6 @@ class Main {
     return SELECTED_ZALO_PAGE_ORG_ID_MAP[ORG_ID] || ''
   }
 
-  /** hàm lấy dữ liệu từ query string */
-  getDataFromQueryString() {
-    // lấy id tổ chức từ query string
-    this.getQueryStringByKey('org_id')
-    // lấy id khách hàng hiện tại từ query string
-    this.getQueryStringByKey('actual_client_id')
-    // lấy id trang hiện tại từ query string
-    this.getQueryStringByKey('actual_page_id')
-    // lấy id tin nhắn trong query string
-    this.getQueryStringByKey('message_id')
-    // lấy số điện thoại trong query string
-    this.getQueryStringByKey('phone')
-  }
-
-  /** lấy dữ liệu từng field từ query string */
-  getQueryStringByKey(key: keyof typeof query_string_data.value) {
-    query_string_data.value[key] = $query_string.get(key) || ''
-  }
-
   /** chọn trang zalo */
   selectPage(page_info?: OwnerShipInfo) {
     // nếu không có thông tin page thì thôi
@@ -668,9 +714,6 @@ class Main {
 
     // lưu lại id page
     selected_page_id.value = page_info.page_id
-
-    // gửi id trang tới trang cha để lấy id khách hàng
-    this.getClientId()
 
     // tắt dropdown chọn page zalo
     zalo_personal_dropdown_ref.value?.toggleDropdown()
@@ -683,24 +726,6 @@ class Main {
 
     // Lấy thông tin khách hàng zalo
     $main.getInfoZaloPersonal()
-  }
-
-  /** hàm gửi sự kiện để lấy id khách hàng từ iframe cha */
-  getClientId() {
-    // reset hội thoại
-    conversationStore.select_conversation = undefined
-
-    // gửi sự kiện get.client_id đến iframe cha với id page đã chọn
-    window.parent.postMessage(
-      {
-        type: 'get.client_id',
-        from: 'ZALO_PERSONAL_CORE',
-        data: {
-          page_id: selected_page_id.value,
-        },
-      },
-      '*',
-    )
   }
 
   /** lưu id của page zalo xuống localstorage */
@@ -751,19 +776,6 @@ class Main {
     }
   }
 
-  /** hàm xử lý sự kiện khi nhận được từ iframe cha */
-  handleEvent(event: MessageEvent) {
-    // nếu không phải là thẻ bọc của iframe zalo personal core thi thôi
-    if (event.data?.from !== 'ZALO_PERSONAL_CONTAINER') return
-
-    // nếu là sự kiện get.client_id thì lưu lại id khách hàng
-    if (event.data?.type === 'get.client_id') {
-      client_id.value = event.data?.data?.client_id
-      // lấy dữ liệu hội thoại của khách hàng đó
-      this.getConversation()
-    }
-  }
-
   /** lấy dữ liệu hội thoại */
   @error(new NoneToast())
   async getConversation() {
@@ -775,86 +787,118 @@ class Main {
     if (!client_id.value) return
 
     // lấy dữ liệu hội thoại
-    conversationStore.select_conversation = await new Promise(
-      (resolve, reject) => {
-        read_conversation(
-          {
-            page_id: [selected_page_id.value as string],
-            client_id: client_id.value,
-            limit: 1,
-          },
-          (e, r) => {
-            /** id của hội thoại đầu tiên */
-            const FIRST_KEY_CONVERSATION = Object.keys(
-              r?.conversation || {},
-            )?.[0]
+    conversation_data.value = await new Promise((resolve, reject) => {
+      read_conversation(
+        {
+          page_id: [selected_page_id.value as string],
+          client_id: client_id.value,
+          limit: 1,
+        },
+        (e, r) => {
+          /** id của hội thoại đầu tiên */
+          const FIRST_KEY_CONVERSATION = Object.keys(r?.conversation || {})?.[0]
 
-            /** lấy ra hội thoại đầu tiên */
-            const CONVERSATION = r?.conversation?.[FIRST_KEY_CONVERSATION]
+          /** lấy ra hội thoại đầu tiên */
+          const CONVERSATION = r?.conversation?.[FIRST_KEY_CONVERSATION]
 
-            // nếu có thì trả về không thì báo lỗi
-            if (CONVERSATION) {
-              resolve(CONVERSATION)
-            }
-            // nếu không tìm thấy hội thoại nào thì init 1 hội thoại để gửi được tin nhắn
-            else {
-              // reject()
-              resolve({
-                fb_client_id: client_id.value,
-                fb_page_id: selected_page_id.value || '',
-                last_message_type: 'page',
-              })
-            }
-          },
-        )
-      },
-    )
+          // nếu có thì trả về không thì báo lỗi
+          if (CONVERSATION) {
+            resolve(CONVERSATION)
+          }
+          // nếu không tìm thấy hội thoại nào thì init 1 hội thoại để gửi được tin nhắn
+          else {
+            // reject()
+            resolve({
+              fb_client_id: client_id.value,
+              fb_page_id: selected_page_id.value || '',
+              last_message_type: 'page',
+            })
+          }
+        },
+      )
+    })
   }
 
   /** lấy thông tin khách hàng */
-  @error($custom_toast)
   @loadingV2(is_loading_zalo_personal, 'value')
   async getInfoZaloPersonal() {
     // nếu không có id trang thì thôi
     if (!selected_page_id.value) return
 
     /** số điện thoại của khách */
-    let phone = ''
+    let phone_number = ''
 
     /** regex kiểm tra số điện thoại việt nam */
     const PHONE_REGEX = /^0\d{9}$/
     // nếu số điện thoại không hợp lệ thì thôi
-    if (PHONE_REGEX.test(query_string_data.value?.phone)) {
-      phone = query_string_data.value?.phone
+    if (PHONE_REGEX.test(phone.value)) {
+      phone_number = phone.value
     }
 
     // nếu không có số điện thoại và message_id thì thôi
-    if (!phone && !query_string_data.value.message_id) return
+    if (!phone_number && !props.message_id) return
 
     // reset dữ liệu khách hàng
     zalo_personal.value = {}
+    error_message.value = ''
 
     /** dữ liệu khách hàng zalo cá nhân */
-    const RES = await this.API.getInfoZaloPersonal({
-      page_id: selected_page_id.value,
-      message_id: query_string_data.value.message_id || undefined,
-      client_phone: phone || undefined,
-    })
+    let res: Awaited<
+      ReturnType<N4SerivceAppZaloPersonal['getInfoZaloPersonal']>
+    >
+
+    try {
+      res = await this.API.getInfoZaloPersonal(
+        {
+          page_id: selected_page_id.value,
+          message_id: props.message_id || undefined,
+          client_phone: phone_number || undefined,
+        },
+        true,
+      )
+    } catch (e: any) {
+      // nếu chưa có view thì fallback về màn search
+      if (!view.value) {
+        view.value = 'SEARCH'
+      }
+
+      /** mã lỗi của zalo */
+      const ZCA_ERROR_CODE = Number(e?.mean?.code || e?.message?.code)
+      switch (ZCA_ERROR_CODE) {
+        case 216:
+          error_message.value = $t('Tài khoản Zalo này đã bị khóa.')
+          break
+        case 212:
+        case 210:
+          error_message.value = $t('Số điện thoại này đã chặn tìm kiếm.')
+          break
+        case 219:
+          error_message.value = $t(
+            'Không tìm thấy người dùng với số điện thoại này.',
+          )
+          break
+        default:
+          error_message.value = $t(
+            'Số điện thoại chưa đăng ký tài khoản hoặc không cho phép tìm kiếm.',
+          )
+      }
+      return
+    }
 
     // lưu lại dữ liệu khách hàng
-    zalo_personal.value = RES
+    zalo_personal.value = res
 
     // nếu có client_id thì
-    if (RES?.client_id) {
+    if (res?.client_id) {
       // lưu lại client_id
-      client_id.value = RES?.client_id
+      client_id.value = res?.client_id
       // lấy dữ liệu hội thoại của khách hàng đó
       this.getConversation()
     }
 
     if (!view.value) {
       // nếu là mở ở tin nhắn và đã kết bạn thì vào chat luôn
-      if (RES?.is_accept_friend_request && query_string_data.value.message_id) {
+      if (res?.is_accept_friend_request && props.message_id) {
         view.value = 'CHAT'
       }
       // nếu không thì mở màn search số với lần đầu load từ lần sau thì thôi giữ nguyên
@@ -863,7 +907,7 @@ class Main {
       }
     } else {
       // đã kết bạn thì chuyển về màn chat
-      if (RES?.is_accept_friend_request && view.value !== 'SEARCH') {
+      if (res?.is_accept_friend_request && view.value !== 'SEARCH') {
         view.value = 'CHAT'
       }
     }
@@ -900,99 +944,102 @@ class Main {
     ).updateClientName(alias_name.value)
 
     // nếu không có hội thoại thì thôi
-    if (!conversationStore.select_conversation) return
+    if (!conversation_data.value) return
 
     // cập nhật tên hội thoại
-    conversationStore.select_conversation.client_name = alias_name.value
+    conversation_data.value.client_name = alias_name.value
 
     // tắt chế độ sửa tên
     is_edit_name.value = false
   }
+
+  /** khởi tạo dữ liệu */
+  async initData() {
+    // lấy danh sách các page zalo của tổ chức hiện tại
+    await this.getZaloPage()
+    // lấy thông tin page đang được chọn
+    this.getZaloPageInfo()
+
+    // nếu có message id thì
+    if (!props.message_id) {
+      view.value = 'SEARCH'
+    } else {
+      // Lấy thông tin khách hàng zalo
+      await $main.getInfoZaloPersonal()
+    }
+  }
 }
 const $main = new Main()
-
-/** hàm xử lý sự kiện khi nhân được từ iframe zalo personal container */
-const handleEvent = $main.handleEvent.bind($main)
 
 /** hàm tìm kiếm thông tin khách hàng zalo cá nhân */
 const debounce_search_zalo_personal = debounce(() => {
   /** regex kiểm tra số điện thoại việt nam */
   const PHONE_REGEX = /^0\d{9}$/
   // nếu số điện thoại không hợp lệ thì thôi
-  if (!PHONE_REGEX.test(query_string_data.value?.phone)) return
+  if (!PHONE_REGEX.test(phone.value)) return
 
   // tìm kiếm thống tin khách hàng zalo cá nhân
   $main.getInfoZaloPersonal()
 }, 200)
 
 onMounted(async () => {
-  // hàm lấy dữ liệu từ query string
-  $main.getDataFromQueryString()
+  // nếu không có id tổ chứ
+  if (!orgStore.selected_org_id) return
 
-  // lấy danh sách các page zalo của tổ chức hiện tại
-  await $main.getZaloPage()
+  // Tạo portable api cho chat-core.
+  message_api.value = createMessageApi(orgStore.selected_org_id)
 
-  // nếu có message id thì
-  if (!query_string_data.value.message_id) {
-    view.value = 'SEARCH'
-  } else {
-    // Lấy thông tin khách hàng zalo
-    $main.getInfoZaloPersonal()
+  // khởi tạo dữ liệu
+  await $main.initData()
+})
+
+/**
+ * Tạo portable chat api cho chat-core.
+ * @param org_id id tổ chức Retion hiện tại
+ */
+function createMessageApi(org_id: string) {
+  // Tạo config đầy đủ cho portable chat api.
+  const CONFIG: PortableChatApiConfig = {
+    domains: {
+      n4: $env.host.n4_service_v2,
+      ai: $env.host.ai,
+      n6: $env.host.n6_static,
+      widget: $env.host.widget,
+      n9: $env.host.n9_analytic_v2,
+      n13: $env.host.n13_zalo_personal,
+      chatbot: $env.host.chatbot,
+      merchant_contact: $env.host.merchant.contact,
+    },
+    token: getItem('access_token'),
+    org_id,
   }
 
-  // lấy thông tin của các page zalo
-  $main.getZaloPageInfo()
+  // Tạo instance portable chat api từ config.
+  return createPortableChatApi(CONFIG)
+}
 
-  // gửi iframe đến trang cha
-  $main.getClientId()
-
-  // lắng nghe sự kiện từ iframe cha
-  window.addEventListener('message', handleEvent)
-
-  // lưu id của danh sách tin nhắn là iframe-list-message
-  // để phần với danh sách tin nhắn của app
-  messageStore.list_message_id = 'iframe-list-message'
-})
-
-onUnmounted(() => {
-  // hủy lắng nghe sự kiện từ iframe cha
-  window.removeEventListener('message', handleEvent)
-
-  // đóng socket
-  $socket.close()
-})
-
-const search_input = ref<HTMLInputElement | null>(null)
-
+/** Theo dõi sự thay đổi của số điện thoại để xóa thông báo lỗi cũ.*/
 watch(
-  () => view.value,
-  async newVal => {
-    if (newVal === 'SEARCH') {
-      await nextTick()
-      search_input.value?.focus()
-    }
+  () => phone.value,
+  () => {
+    error_message.value = ''
   },
 )
 
 watch(
   () => view.value,
-  () => {
-    window.parent.postMessage(
-      {
-        type: 'view.change',
-        from: 'ZALO_PERSONAL_CORE',
-        data: {
-          view: view.value,
-        },
-      },
-      '*',
-    )
+  async newVal => {
+    // nếu là màn search
+    if (newVal === 'SEARCH') {
+      await nextTick()
+      search_input.value?.focus()
+    }
 
     nextTick(() => {
       // nếu đang là màn gửi lời mời kết bạn
       if (view.value === 'FRIEND_REQUEST') {
         // khởi tạo nội dung tin nhắn
-        $input_service?.setInputText(
+        setChatDraft(
           `Xin chào, mình là ${selected_page_info.value?.name}. Kết bạn với mình nhé! `,
         )
         // không cho phép gửi tin nhắn
@@ -1003,7 +1050,7 @@ watch(
       // cho phép gửi tin nhắn
       messageStore.is_can_send_message = true
       // reset input
-      $input_service.setInputText('')
+      setChatDraft('')
       // tắt cờ đang gõ
       commonStore.is_typing = false
     })

@@ -1,7 +1,13 @@
 <template>
   <div class="flex items-center justify-between gap-3">
     <div class="flex items-center flex-grow gap-1 min-w-0">
-      <template v-if="(source?.user_id || source?.fb_staff_id) && staff_info">
+      <template
+        v-if="
+          setting_conversation.is_staff_icon &&
+          (source?.user_id || source?.fb_staff_id) &&
+          staff_info
+        "
+      >
         <StaffAvatar
           v-tooltip="staff_info?.name"
           :id="source?.user_id || source?.fb_staff_id"
@@ -21,27 +27,24 @@
     <div class="flex-shrink-0 text-xs">
       {{ $date_handle.formatCompareCurrentYear(source?.last_message_time) }}
     </div>
-    <!-- <div
-      :key="force_render_key"
-      class="flex-shrink-0 text-xs"
-    >
-      {{ $date_handle.formatCompareCurrentYear(source?.last_message_time) }}
-    </div> -->
   </div>
 </template>
 <script setup lang="ts">
+import { storeToRefs } from 'pinia'
 import { getStaffInfo } from '@/service/function'
+import { useChatbotUserStore } from '@/stores'
 import { container } from 'tsyringe'
 import { DateHandle } from '@/utils/helper/DateHandle'
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed } from 'vue'
 
 import StaffAvatar from '@/components/Avatar/StaffAvatar.vue'
-
 import ArrowDown from '@/components/Icons/ArrowDown.vue'
 
 import type { ConversationInfo } from '@/service/interface/app/conversation'
 
 const $date_handle = container.resolve(DateHandle)
+const chatbotUserStore = useChatbotUserStore()
+const { setting_conversation } = storeToRefs(chatbotUserStore)
 
 const $props = withDefaults(
   defineProps<{

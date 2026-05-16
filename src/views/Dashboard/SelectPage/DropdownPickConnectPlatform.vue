@@ -126,7 +126,10 @@ const $props = withDefaults(
     /**lùi lại bao nhiêu */
     back?: number
   }>(),
-  {}
+  {
+    position: 'BOTTOM',
+    back: 0,
+  }
 )
 
 /** Mô tả của nền tảng */

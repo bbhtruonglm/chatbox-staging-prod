@@ -9,7 +9,7 @@
     >
       <div
         @click.stop
-        class="bg-white absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-xl shadow-lg max-w-[95%] max-h-[95%] flex flex-col"
+        class="theme-card absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-xl shadow-lg max-w-[95%] max-h-[95%] flex flex-col"
         :class="class_modal"
       >
         <header

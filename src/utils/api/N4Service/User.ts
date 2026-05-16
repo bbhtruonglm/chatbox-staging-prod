@@ -1,5 +1,10 @@
-import type { ChatbotUserInfo } from '@/service/interface/app/chatbot_user'
+import type { ChatbotUserInfo, SettingConversation } from '@/service/interface/app/chatbot_user'
 import { N4Serivce } from '@/utils/api/N4Serivce'
+
+type UpdateUserInfoInput = {
+  avatar?: string
+  setting_conversation?: SettingConversation
+}
 
 /**gọi API module page của chatbox */
 export class N4SerivceAppUser extends N4Serivce {
@@ -25,7 +30,7 @@ export class N4SerivceAppUser extends N4Serivce {
   }
 
   /** lưu dữ liệu nhân sự */
-  public async updateUserInfo(data:{avatar: string}): Promise<void> {
+  public async updateUserInfo(data: UpdateUserInfoInput): Promise<void> {
     return this.post('update_chatbot_user_info', data)
   }
 }

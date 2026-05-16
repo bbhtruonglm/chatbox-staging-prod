@@ -3,7 +3,7 @@
     @dragover.prevent
     @drop="onDropFile"
     id="router__chat"
-    class="h-full w-full flex relative p-2 gap-2"
+    class="h-full w-full flex flex-col relative theme-page text-sm"
   >
     <HotAlert
       :codes="['ALMOST_REACH_QUOTA_AI', 'LOCK_FEATURE', 'PAGE_EXPIRED_SESSION']"
@@ -11,20 +11,33 @@
       class="absolute top-3 left-1/2 -translate-x-1/2 w-2/3 z-10"
     />
 
-    <Menu />
-    <Layout>
-      <template #left>
-        <LeftBar />
-      </template>
-      <template #center>
-        <div class="flex gap-2 h-full">
-          <CenterContent :is_loading="should_show_skeleton" />
-        </div>
-      </template>
-      <template #right>
-        <RightBar :is_loading="is_init_loading || should_show_skeleton" />
-      </template>
-    </Layout>
+    <Header />
+    <iframe
+      v-if="commonStore.analytic_url"
+      class="h-full w-full"
+      :src="commonStore.analytic_url"
+    />
+    <main
+      class="h-full w-full flex gap-2 p-2 min-h-0"
+      :class="{
+        hidden: commonStore.analytic_url,
+      }"
+    >
+      <Menu />
+      <Layout>
+        <template #left>
+          <LeftBar />
+        </template>
+        <template #center>
+          <div class="flex gap-2 w-full h-full">
+            <CenterContent :is_loading="should_show_skeleton" />
+          </div>
+        </template>
+        <template #right>
+          <RightBar :is_loading="is_init_loading || should_show_skeleton" />
+        </template>
+      </Layout>
+    </main>
 
     <AlertWarning
       :title="alert_state.title"
@@ -45,14 +58,12 @@
 <script setup lang="ts">
 import { dispatchEventBus } from '@/event'
 import { read_os } from '@/service/api/chatbox/billing'
-import {
-  update_info_conversation
-} from '@/service/api/chatbox/n4-service'
+import { update_info_conversation } from '@/service/api/chatbox/n4-service'
 import { create_token_app_installed } from '@/service/api/chatbox/n5-app'
 import {
   getCurrentOrgInfo,
   getPageInfo,
-  getPageWidget
+  getPageWidget,
 } from '@/service/function'
 import {
   listen as ext_listen,
@@ -69,6 +80,7 @@ import {
   usePageStore,
 } from '@/stores'
 import { N4SerivceAppPage } from '@/utils/api/N4Service/Page'
+import { N4ServiceConversation } from '@/utils/api/N4Serivce'
 import { N5AppV1AppApp } from '@/utils/api/N5App'
 import { error } from '@/utils/decorator/Error'
 import { Toast } from '@/utils/helper/Alert/Toast'
@@ -76,15 +88,9 @@ import { Delay } from '@/utils/helper/Delay'
 import { RealtimeSocket } from '@/utils/helper/Socket'
 import { User } from '@/utils/helper/User'
 import { initRequireData, useDropFile } from '@/views/composable'
-import {
-  difference,
-  intersection,
-  keys,
-  map,
-  size
-} from 'lodash'
+import { debounce, difference, filter, intersection, keys, map, size } from 'lodash'
 import { container } from 'tsyringe'
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
@@ -100,12 +106,11 @@ import RightBar from '@/views/ChatWarper/Chat/RightBar.vue'
 import ConnectPage from '@/views/Dashboard/ConnectPage.vue'
 import Layout from '@/views/ChatWarper/Layout.vue'
 import Menu from '@/views/ChatWarper/Menu.vue'
+import Header from '@/views/ChatWarper/Header.vue'
 
 import type { OwnerShipInfo } from '@/service/interface/app/billing'
 import type { SocketEvent } from '@/service/interface/app/common'
-import type {
-  ConversationInfo
-} from '@/service/interface/app/conversation'
+import type { ConversationInfo } from '@/service/interface/app/conversation'
 import type { MessageInfo } from '@/service/interface/app/message'
 import type { FacebookCommentPost } from '@/service/interface/app/post'
 import type { StaffSocket } from '@/service/interface/app/staff'
@@ -160,6 +165,24 @@ const alert_state = ref<{ title?: string; description?: string }>({})
 
 /** cờ đang khởi tạo dữ liệu */
 const is_init_loading = ref(true)
+/** hàm hủy lắng nghe extension */
+let clear_extension_listener: (() => void) | undefined
+/** timer gom nhiều phản hồi ext thành 1 lần update server */
+const update_info_conversation_timers: Record<
+  string,
+  ReturnType<typeof setTimeout> | undefined
+> = {}
+/** payload chờ update server theo từng hội thoại */
+const pending_update_info_conversation: Record<
+  string,
+  {
+    page_id: string
+    client_id: string
+    fb_uid?: string
+    fb_info?: any
+    force_update?: boolean
+  }
+> = {}
 
 /** Có nên hiển thị skeleton loading cho center va right bar ko */
 const should_show_skeleton = computed(() => {
@@ -187,6 +210,27 @@ watch(
   },
 )
 
+/**
+ * @description lắng nghe thay đổi danh sách trang được chọn
+ * @description sự kiện này xảy ra khi đổi tổ chức bên trong màn chat
+ */
+watch(
+  () => pageStore.selected_page_id_list,
+  async new_value => {
+    // nếu không có dữ liệu page nào được chọn thì return
+    if (!size(new_value)) return
+    //bật danh sách hội thoại
+    conversationStore.is_loading_list = true
+    // call api lấy thông tin trang
+    $main.getPageOfCurrentOrg()
+    // lấy thông tin các page
+    await $main.getPageInfoToChat()
+    // dispatch event tải lại danh sách hội thoại
+    dispatchEventBus('reload_conversation_list', {})
+  },
+  { deep: true },
+)
+
 onMounted(() => {
   /** lấy thông tin trang để chat */
   $main.getPageInfoToChat()
@@ -212,6 +256,20 @@ onMounted(() => {
 
 /** gọi khi component bị hủy */
 onUnmounted(() => {
+  // xóa thông tin trang để lần sau vào lại ko bị load lại
+  pageStore.selected_page_list_info = {}
+  /** hủy lắng nghe ext để tránh mount lại bị nhân đôi callback */
+  clear_extension_listener?.()
+  clear_extension_listener = undefined
+
+  /** hủy các timer đang chờ update server */
+  for (const DATA_KEY in update_info_conversation_timers) {
+    /** Khai báo biến để lưu timer */
+    const TIMER = update_info_conversation_timers[DATA_KEY]
+    // Hủy timer
+    if (TIMER) clearTimeout(TIMER)
+  }
+
   /** destroy ref global */
   commonStore.ref_alert_reach_limit = undefined
 
@@ -257,7 +315,7 @@ function openDisconnectConnectPage() {
   if (disconnect_warning_info.value?.org_id) {
     orgStore.selected_org_id = disconnect_warning_info.value.org_id
     orgStore.selected_org_info = orgStore.list_org?.find(
-      org => org.org_id === orgStore.selected_org_id
+      org => org.org_id === orgStore.selected_org_id,
     )
     orgStore.is_selected_all_org = false
   }
@@ -296,8 +354,95 @@ function checkFocusChatTab($event: FocusEvent) {
   /** nếu type của sự kiện là focus thì đánh dấu đang focus, ngược lại thì không */
   is_focus_chat_tab.value = $event.type === 'focus'
 }
+/** gửi yêu cầu quét uid/info cho ext nhưng tránh bắn trùng khi đang chạy */
+function requestConversationInfoFromExt(conversation?: ConversationInfo) {
+  /** thiếu dữ liệu thì bỏ qua */
+  if (
+    conversation?.platform_type !== 'FB_MESS' ||
+    !conversation?.fb_page_id ||
+    !conversation?.fb_client_id ||
+    !conversation?.data_key ||
+    conversation?.client_bio?.fb_uid
+  )
+    return
+
+  /** nếu đang quét uid rồi thì không gọi lặp */
+  if (extensionStore.is_find_uid[conversation.data_key]) return
+
+  /** bật cờ đang quét uid */
+  extensionStore.is_find_uid[conversation.data_key] = true
+
+  /** quá 10s thì tắt loading */
+  setTimeout(() => {
+    extensionStore.is_find_uid[conversation.data_key!] = false
+  }, 10000)
+
+  /** gọi ext để lấy uid và thông tin khách hàng */
+  getFbUserInfo(
+    conversation.platform_type,
+    conversation.fb_page_id,
+    conversation.fb_client_id,
+    pageStore?.selected_page_list_info?.[conversation.fb_page_id]?.page
+      ?.fb_page_token,
+  )
+}
+/** gom nhiều phản hồi ext gần nhau thành 1 request update server */
+function scheduleUpdateConversationInfo(payload: {
+  page_id: string
+  client_id: string
+  fb_uid?: string
+  fb_info?: any
+  force_update?: boolean
+}) {
+  /** key duy nhất của hội thoại */
+  const DATA_KEY = `${payload.page_id}_${payload.client_id}`
+
+  /** gộp payload mới nhất vào dữ liệu chờ gửi */
+  pending_update_info_conversation[DATA_KEY] = {
+    ...pending_update_info_conversation[DATA_KEY],
+    ...payload,
+  }
+
+  /** reset timer cũ nếu có */
+  if (update_info_conversation_timers[DATA_KEY]) {
+    clearTimeout(update_info_conversation_timers[DATA_KEY])
+  }
+
+  /** chờ ngắn để gom các phản hồi uid/info tách rời */
+  update_info_conversation_timers[DATA_KEY] = setTimeout(async () => {
+    /** payload cuối cùng sẽ được gửi lên server */
+    const FINAL_PAYLOAD = pending_update_info_conversation[DATA_KEY]
+
+    /** cleanup trước khi gọi API */
+    delete pending_update_info_conversation[DATA_KEY]
+    delete update_info_conversation_timers[DATA_KEY]
+
+    /** thiếu payload thì bỏ qua */
+    if (!FINAL_PAYLOAD) return
+
+    /** không gửi fb_info nếu ext chỉ trả về object rỗng */
+    const HAS_FB_INFO_DATA = !!FINAL_PAYLOAD.fb_info && size(FINAL_PAYLOAD.fb_info) > 0
+
+    /** payload đã được làm sạch trước khi gọi API */
+    const SANITIZED_PAYLOAD = { ...FINAL_PAYLOAD }
+
+    if (!HAS_FB_INFO_DATA) delete SANITIZED_PAYLOAD.fb_info
+
+    /** nếu không còn gì để update thì bỏ qua */
+    if (!SANITIZED_PAYLOAD.fb_uid && !HAS_FB_INFO_DATA) return
+
+    /** flag nội bộ, không gửi lên server */
+    delete SANITIZED_PAYLOAD.force_update
+
+    /** cập nhật data lên server */
+    update_info_conversation(SANITIZED_PAYLOAD, () => {})
+  }, 250)
+}
 /**gắn cờ nếu ext được kích hoạt + xử lý các logic */
 function initExtensionLogic() {
+  /** hủy listener cũ nếu có để tránh đăng ký trùng */
+  clear_extension_listener?.()
+
   /** đánh dấu đang tìm ext */
   commonStore.extension_status = 'FINDING'
 
@@ -315,7 +460,7 @@ function initExtensionLogic() {
   }, 10000)
 
   /** lắng nghe ext gửi thông điệp */
-  ext_listen((event, e, r) => {
+  clear_extension_listener = ext_listen((event, e, r) => {
     /** đánh dấu đã phát hiện ext */
     if (event === 'EXTENSION_INSTALLED') {
       /** gắn cờ phát hiện ext */
@@ -325,27 +470,32 @@ function initExtensionLogic() {
       if (r?.force_send_message_over_inbox)
         commonStore.force_send_message_over_inbox = true
 
-      /** nếu hội thoại đang được chọn chưa có uid thì check */
-      if (
-        conversationStore.select_conversation?.fb_page_id &&
-        (!conversationStore.select_conversation?.client_bio?.fb_uid ||
-          !conversationStore.select_conversation?.client_bio?.fb_info)
-      )
-        /** nếu hội thoại đang được chọn chưa có uid hoặc thông tin khách hàng thì check */
-        getFbUserInfo(
-          conversationStore.select_conversation?.platform_type,
-          conversationStore.select_conversation?.fb_page_id,
-          conversationStore.select_conversation?.fb_client_id,
-          pageStore?.selected_page_list_info?.[
-            conversationStore.select_conversation?.fb_page_id
-          ]?.page?.fb_page_token,
-        )
+      /** nếu hội thoại đang được chọn chưa có uid thì gọi ext để quét */
+      requestConversationInfoFromExt(conversationStore.select_conversation)
     }
 
     /** nếu nhận được thông tin cá nhân của hội thoại thì update */
     if (event === 'GET_FB_USER_INFO' && r?.page_id && r?.client_id) {
       /**key để update hội thoại */
       const DATA_KEY = `${r?.page_id}_${r?.client_id}`
+      /** đây có phải lần người dùng chủ động quét lại không */
+      const IS_FORCE_UPDATE =
+        !!extensionStore.force_update_client_info[DATA_KEY]
+      /** dữ liệu hội thoại hiện tại trong store */
+      const CURRENT_CONVERSATION =
+        conversationStore.conversation_list?.[DATA_KEY] ||
+        (conversationStore.select_conversation?.data_key === DATA_KEY
+          ? conversationStore.select_conversation
+          : undefined)
+      /** dữ liệu khách hàng hiện tại */
+      const CURRENT_CLIENT_BIO = CURRENT_CONVERSATION?.client_bio || {}
+      /** uid hiện tại */
+      const CURRENT_FB_UID = CURRENT_CLIENT_BIO?.fb_uid
+      /** fb_info ext trả về có dữ liệu hợp lệ hay không */
+      const HAS_NEW_FB_INFO = !!r?.info && size(r.info) > 0
+
+      /** xác định ext có trả về uid mới thực sự hay không */
+      const IS_NEW_FB_UID = !!r?.id && r?.id !== CURRENT_FB_UID
 
       /** nếu tìm thấy uid thì tắt cờ đang quét uid */
       if (r?.id) extensionStore.is_find_uid[DATA_KEY] = false
@@ -353,24 +503,32 @@ function initExtensionLogic() {
       if (r?.info) extensionStore.is_find_client_info[DATA_KEY] = false
 
       /** nếu không tìm thấy cả 2 dữ liệu thì tắt cờ và dừng */
-      if (!r?.id && !r?.info) {
+      if (!r?.id && !HAS_NEW_FB_INFO) {
         /** tắt cờ đang quét uid */
         extensionStore.is_find_uid[DATA_KEY] = false
         /** tắt cờ đang quét thông tin khách hàng */
         extensionStore.is_find_client_info[DATA_KEY] = false
+        /** không có dữ liệu trả về thì bỏ cờ ép update */
+        delete extensionStore.force_update_client_info[DATA_KEY]
 
         return
       }
 
+      /**
+       * nếu chỉ nhận lại đúng uid cũ và không có fb_info thì không cần xử lý
+       * ngoại lệ: người dùng bấm quét lại thì vẫn cho update server
+       */
+      if (!IS_FORCE_UPDATE && !IS_NEW_FB_UID && !HAS_NEW_FB_INFO) return
+
       /**dữ liệu khách hàng hiện tại */
       const CLIENT_BIO: ConversationInfo['client_bio'] =
-        conversationStore.conversation_list?.[DATA_KEY]?.client_bio || {}
+        CURRENT_CLIENT_BIO || {}
 
       /** nạp UID */
       if (r?.id) CLIENT_BIO.fb_uid = r?.id
 
       /** nạp thông tin khách hàng */
-      if (r?.info) {
+      if (HAS_NEW_FB_INFO) {
         /** nếu có thông tin khách hàng thì bật cờ có thông tin mới lên */
         if (conversationStore.select_conversation) {
           conversationStore.select_conversation.has_new_info_from_ext = true
@@ -390,16 +548,14 @@ function initExtensionLogic() {
       )
         conversationStore.select_conversation.client_bio = CLIENT_BIO
 
-      /** cập nhật data lên server */
-      update_info_conversation(
-        {
-          page_id: r?.page_id,
-          client_id: r?.client_id,
-          fb_uid: r?.id,
-          fb_info: r?.info,
-        },
-        (e, r) => {},
-      )
+      /** gom các phản hồi gần nhau để chỉ update server 1 lần */
+      scheduleUpdateConversationInfo({
+        page_id: r?.page_id,
+        client_id: r?.client_id,
+        fb_uid: r?.id,
+        fb_info: HAS_NEW_FB_INFO ? r?.info : undefined,
+        force_update: IS_FORCE_UPDATE,
+      })
     }
   })
 }
@@ -551,11 +707,26 @@ function triggerAlert(conversation?: ConversationInfo) {
   /** nếu người dùng đang focus vào tab chat thì không cần thông báo */
   if (is_focus_chat_tab.value) return
 
-  /** phát nhạc thông báo */
-  ringBell()
+  /** id của page đang chọn */
+  const PAGE_ID = conversation?.fb_page_id
+  /** 
+   * Đọc cấu hình từ Billing OwnerShip (lưu trong orgStore.list_os). 
+   * Trả về undefined nếu không có cấu hình.
+   */
 
-  /** bắn web noti */
-  pushWebNoti(conversation)
+  const PAGE_CONFIG = orgStore.list_os?.find(
+    (item: any) => item?.page_id === PAGE_ID
+  )?.page_info
+ 
+  /** chỉ phát nhạc khi cấu hình cho phép (is_sound_new_message === true) */
+  if (PAGE_CONFIG?.is_sound_new_message) {
+    ringBell()
+  }
+  
+  /** chỉ hiện web noti khi cấu hình cho phép (is_alert_new_message === true) */
+  if (PAGE_CONFIG?.is_alert_new_message) {
+    pushWebNoti(conversation)
+  }
 }
 /**gửi thông báo bằng web noti - không chạy trên mac */
 async function pushWebNoti(conversation?: ConversationInfo) {
@@ -588,12 +759,20 @@ async function pushWebNoti(conversation?: ConversationInfo) {
   /** tắt noti */
   NOTI.close()
 }
-/**phát nhạc thông báo */
-function ringBell() {
-  const BELL = new Audio(BellSound)
-  BELL.volume = 0.3
-  BELL.play()
-}
+/**phát nhạc thông báo (chỉ reo sau khi đã ngừng spam tin nhắn được 3s) */
+const ringBell = debounce(
+  async () => {
+    try {
+      const BELL = new Audio(BellSound)
+      BELL.volume = 0.3
+      await BELL.play()
+    } catch (error) {
+      console.error('Cannot play notification sound', error)
+    }
+  },
+  3000,
+  { leading: false, trailing: true }
+)
 /**kiểm tra xem người dùng có cấp quyền cho phép thông báo không */
 function checkAllowNoti() {
   /** lưu ý web noti chỉ chạy trên window, mac không chạy */
@@ -739,7 +918,8 @@ function validateConversation(
     intersection(
       conversationStore.option_filter_page_data.not_label_id,
       conversation.label_id,
-    ).length && !conversationStore.conversation_list?.[DATA_KEY_LABEL]
+    ).length &&
+    !conversationStore.conversation_list?.[DATA_KEY_LABEL]
   )
     return
 
@@ -778,10 +958,17 @@ class Main {
   @error(new CustomToast())
   async getPageInfoToChat() {
     /** delay một chút để load dữ liệu từ local vào store kịp */
-    await $delay.exec(200)
+    await $delay.exec(1000)
 
-    /**   danh sách id các page được chọn */
-    const SELECTED_PAGE_IDS = keys(pageStore.selected_page_id_list)
+    /** danh sách id các page được chọn */
+    const SELECTED_PAGE_IDS = keys(pageStore.selected_page_id_list).filter(
+      page_id => {
+        return (
+          pageStore.map_orgs?.map_page_org?.[page_id] ===
+          orgStore.selected_org_id
+        )
+      },
+    )
 
     /** nếu không có page nào được chọn thì thôi */
     if (!SELECTED_PAGE_IDS?.length) return goDashboard()
@@ -794,13 +981,6 @@ class Main {
       throw $t('v1.view.main.dashboard.chat.error.get_org_info')
 
     try {
-      /** dữ liệu các trang đang chọn */
-      // const PAGES_OLD = await new N4SerivceAppPage().getPageInfoToChat(
-      //   orgStore.selected_org_id,
-      //   SELECTED_PAGE_IDS,
-      //   true
-      // )
-
       /** Khởi tạo dữ liệu trang */
       let pages
       /** Lấy dữ liệu trang */

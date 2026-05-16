@@ -47,7 +47,6 @@
     width="250px"
     height="auto"
     :is_fit="false"
-    :back="150"
     class_content="flex flex-col gap-1"
   >
     <ul class="flex flex-col gap-1 text-sm">
@@ -79,7 +78,6 @@ const $props = withDefaults(
 
 const orgStore = useOrgStore()
 const chatbotUserStore = useChatbotUserStore()
-const pageManagerStore = usePageManagerStore()
 
 /** danh sách nhóm */
 const groups = ref<IGroup[]>([]) // <- QUAN TRỌNG

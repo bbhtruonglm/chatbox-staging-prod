@@ -29,7 +29,6 @@
           <PageItem
             v-for="page of group"
             @select_page="triggerSelectPage"
-            @sort_list_page="$emit('sort_list_page')"
             :page_info="page?.page!"
             :page="page"
             :org_id
@@ -54,14 +53,16 @@ import { ArrowRightCircleIcon } from '@heroicons/vue/24/solid'
 
 import type { PageData, PageType } from '@/service/interface/app/page'
 
-const $emit = defineEmits(['sort_list_page'])
-
 const $props = withDefaults(
   defineProps<{
     /** id tổ chức */
     org_id?: string
+    /** danh sách page đã được lọc */
+    active_page_list: PageData[]
   }>(),
-  {}
+  {
+    active_page_list: () => [],
+  }
 )
 
 const pageStore = usePageStore()
@@ -72,25 +73,20 @@ const { goToChat } = usePageManager()
 /**xử lý khi trang được chọn ở chế độ nhiều */
 const triggerSelectPage = inject(KEY_ADVANCE_SELECT_AGE_FUNCT)
 
-/**danh sách page sau khi được lọc */
-const active_page_list = defineModel<PageData[]>('active_page_list', {
-  default: [],
-})
-
 /** danh sách được nhóm theo nền tảng */
 const grouped_page_list = computed<Record<string, PageData[]>>(() => {
   /** danh sách được nhóm theo từng nền tảng */
   let result: Record<string, PageData[]> = {}
 
-  active_page_list.value.forEach(page => {
+  $props.active_page_list.forEach(page => {
     /** nền tảng của trang */
     const PAGE_TYPE = page.page?.type || ''
 
     // nếu không có thì thôi
     if (!PAGE_TYPE) return
 
-    // thêm trang vào nền tảng tương ứng
-    result[PAGE_TYPE] = [...(result[PAGE_TYPE] || []), page]
+    if (!result[PAGE_TYPE]) result[PAGE_TYPE] = []
+    result[PAGE_TYPE].push(page)
   })
 
   return result

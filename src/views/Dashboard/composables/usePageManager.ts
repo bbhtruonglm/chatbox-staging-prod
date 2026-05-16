@@ -93,25 +93,27 @@ export function usePageManager() {
       pageStore.all_page_list = {}
 
       /**toàn bộ các trang của người dùng */
-
       const PAGE_DATA_2 = await new N4SerivceAppPage().getListActivePage({})
-      // const PAGE_DATA = await new N4SerivceAppPage().getListPage({})
-      console.log(PAGE_DATA_2, 'PAGE_DATA_2')
       // nếu không có dữ liệu trang thì thôi
       if (isEmpty(PAGE_DATA_2)) return
 
       // lưu trữ dữ liệu trang
-      // pageStore.all_page_list = PAGE_DATA?.page_list || {}
       pageStore.all_page_list = mapValues(PAGE_DATA_2, item => {
+        /** Cache sẵn chuỗi tìm kiếm để không phải normalize lại mỗi lần gõ */
+        const SEARCH_INDEX = nonAccentVn(
+          `${item?.alias || ''} ${item?.name || ''} ${item?.fb_page_id || ''}`
+        )
+
         return {
           group_admin_id: '', // mặc định
           staff_list: {}, // mặc định
           widget_list: [], // phải là mảng rỗng thay vì undefined
+          // Lưu sẵn chuỗi search đã chuẩn hóa để giảm chi phí filter khi dữ liệu lớn
+          search_index: SEARCH_INDEX,
           page: item || {}, // đảm bảo có object page
         }
       })
-
-      // console.log(pageStore.all_page_list, 'all page lisst')
+      
       // lấy dữ liệu mapping tổ chức và trang
       pageStore.map_orgs = await read_link_org(keys(pageStore.all_page_list))
     }
@@ -123,7 +125,7 @@ export function usePageManager() {
     ) {
       // truyền vị trí và lùi lại
       pageManagerStore.position = _position || 'BOTTOM'
-      pageManagerStore.back = _back || 236
+      pageManagerStore.back = _back ?? 0
 
       // sử dùng hàm của dropdown
       pageManagerStore.ref_dropdown_pick_connect_platform?.toggleDropdown(
@@ -252,18 +254,23 @@ export function usePageManager() {
 
     /** lọc các trang theo tìm kiếm */
     filterPageBySearch(page_list: PageList, search: string): PageList {
+      /** Không search thì trả lại nguyên danh sách để tránh loop vô ích */
+      if (!search) return page_list
+
+      /** Chỉ chuẩn hóa keyword một lần cho mỗi lượt search */
+      const FORMATED_SEARCH_VALUE = nonAccentVn(search)
+
       return pickBy(page_list, page_data => {
-        // chuyển dữ liệu tìm kiếm về tiếng việt không dấu
-        let formated_page_name = nonAccentVn(page_data.page?.name || '')
-        let page_id = page_data.page?.fb_page_id || ''
-        let formated_search_value = nonAccentVn(search)
+        const PAGE_ID = page_data.page?.fb_page_id || ''
+        /** Ưu tiên dùng search_index đã cache, fallback cho dữ liệu cũ chưa có field này */
+        const SEARCH_INDEX =
+          page_data.search_index ||
+          nonAccentVn(
+            `${page_data.page?.alias || ''} ${page_data.page?.name || ''} ${PAGE_ID}`
+          )
 
         // tìm kiếm theo tên hoặc id
-        if (
-          formated_page_name.includes(formated_search_value) ||
-          page_id.includes(formated_search_value)
-        )
-          return true
+        if (SEARCH_INDEX.includes(FORMATED_SEARCH_VALUE)) return true
 
         return false
       })

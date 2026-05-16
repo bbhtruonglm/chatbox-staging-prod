@@ -3,9 +3,9 @@
     v-tooltip.right="title"
     :tooltip-disabled="is_disable_tooltip"
     :class="{
-      'bg-slate-300': is_active,
+      'theme-active-foreground': is_active,
     }"
-    class="rounded-lg hover:bg-slate-300 p-2.5"
+    class="rounded-lg theme-hover p-2.5"
   >
     <component
       :is="icon"
@@ -32,7 +32,7 @@ withDefaults(
     class_icon?: string
   }>(),
   {
-    class_icon: 'text-slate-900'
+    class_icon: ''
   }
 )
 </script>

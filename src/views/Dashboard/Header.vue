@@ -15,7 +15,6 @@
       <slot name="right" />
       <User
         position="BOTTOM"
-        :back="237"
       />
       <button
         @click="attach_ref?.toggleDropdown"
@@ -28,7 +27,6 @@
     <Dropdown
       ref="attach_ref"
       :is_fit="false"
-      :back="300"
       width="349px"
       height="auto"
       position="BOTTOM"

@@ -1,10 +1,9 @@
 <template>
   <div
-    :class="{ 'bg-slate-800 text-white hover:bg-slate-800': is_selected }"
-    class="flex gap-3 items-center py-1.5 px-2 text-sm font-medium hover:bg-slate-100 rounded-md w-full cursor-pointer"
+    :class="{ 'theme-active-foreground': is_selected }"
+    class="flex gap-3 items-center py-1.5 px-2 text-sm font-medium theme-hover rounded-md w-full cursor-pointer"
   >
     <div
-      :class="is_selected ? 'bg-gray-800' : 'bg-slate-100'"
       class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
     >
       <img

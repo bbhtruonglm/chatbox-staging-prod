@@ -2,19 +2,20 @@
   <button
     @click="$main.clickConversation()"
     :class="{
-      'bg-slate-200': $main.isSelectThisClient(),
+      'theme-active': $main.isSelectThisClient(),
     }"
-    class="flex items-center hover:bg-slate-200 w-full group rounded-xl px-2 py-3 gap-3"
+    class="flex items-center theme-hover w-full group rounded-xl px-2 gap-3"
   >
     <ClientAvatar :source="source" />
-    <div class="flex flex-col gap-0.5 flex-grow min-w-0 relative">
+    <div
+      class="flex flex-col gap-0.5 flex-grow min-w-0 relative py-3"
+      :class="{
+        'theme-border border-b': !$main.isSelectThisClient(),
+      }"
+    >
       <ClientName :source="source" />
       <LastMessage :source="source" />
       <ClientSupport :source="source" />
-      <hr
-        v-if="!$main.isSelectThisClient()"
-        class="absolute w-full -bottom-3.5 group-hover:hidden"
-      />
     </div>
   </button>
 </template>
@@ -270,25 +271,22 @@ class Main {
     )
       return
 
-    /** tìm uid fb nếu chưa có và đang bật ext */
+    /** tự quét khi chưa có uid fb và đang bật ext */
     if (
       commonStore.extension_status === 'FOUND' &&
-      (!$props.source?.client_bio?.fb_uid ||
-        !$props.source?.client_bio?.fb_info)
+      !$props.source?.client_bio?.fb_uid
     ) {
+      /** nếu đang quét uid rồi thì không gọi ext lặp */
+      if (extensionStore.is_find_uid[$props.source?.data_key]) return
+
       /** nếu chưa có uid thì gắn cờ đang quét uid */
       if (!$props.source?.client_bio?.fb_uid)
         extensionStore.is_find_uid[$props.source?.data_key] = true
-      /** nếu chưa có thông tin khách hàng thì gắn cờ đang quét thông tin khách hàng */
-      if (!$props.source?.client_bio?.fb_info)
-        extensionStore.is_find_client_info[$props.source?.data_key] = true
 
       /** quá 10s thì thôi không loading nữa */
       setTimeout(() => {
         /** tắt cờ đang quét uid */
         extensionStore.is_find_uid[$props.source?.data_key!] = false
-        /** tắt cờ đang quét thông tin khách hàng */
-        extensionStore.is_find_client_info[$props.source?.data_key!] = false
       }, 10000)
 
       /** gọi ext để lấy uid và thông tin khách hàng */

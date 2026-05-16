@@ -1,7 +1,7 @@
 <template>
   <div class="flex gap-2.5 flex-grow min-h-0">
     <div
-      class="w-[119px] flex-shrink-0 bg-gray-100 rounded-md p-1 gap-1 flex flex-col overflow-y-auto"
+      class="w-[119px] flex-shrink-0 theme-card-secondary rounded-md p-1 gap-1 flex flex-col overflow-y-auto"
     >
       <Tab
         v-model="selected_tab"
@@ -44,11 +44,11 @@
         :title="$t('v1.view.main.dashboard.chat.client.ai_menu.address')"
       />
     </div>
-    <div class="flex-grow min-w-0 flex flex-col gap-1 border rounded">
+    <div class="flex-grow min-w-0 flex flex-col gap-1 border theme-border rounded">
       <div class="flex-grow min-h-0 overflow-x-auto relative">
         <table class="w-full table-fixed border-collapse text-xs">
           <thead>
-            <tr class="sticky left-0 top-0 border-b bg-white font-semibold">
+            <tr class="sticky left-0 top-0 border-b theme-card font-semibold">
               <th class="item">
                 {{ $t('v1.view.main.dashboard.chat.client.time') }}
               </th>
@@ -69,7 +69,7 @@
           <tbody>
             <tr
               v-for="event of list_event"
-              class="border-b"
+              class="border-b theme-border"
             >
               <td class="item">
                 {{ dateFormat(event.timestamp?.toString(), 'hh:mm - dd/MM') }}
@@ -116,7 +116,7 @@
         </div>
         <select
           v-model="limit"
-          class="py-2 px-3 rounded-md border text-sm focus:outline-none"
+          class="py-2 px-3 rounded-md border theme-border text-sm focus:outline-none"
         >
           <option value="20">
             20 / {{ $t('v1.view.main.dashboard.chat.client.page') }}

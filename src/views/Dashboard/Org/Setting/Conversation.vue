@@ -84,7 +84,6 @@
           <div>
             <Toggle
               v-model="org_is_only_visible_client_of_staff"
-              class_toggle="peer-checked:bg-black"
             />
           </div>
         </div>
@@ -104,7 +103,6 @@
           <div>
             <Toggle
               v-model="org_is_hide_page_avatar"
-              class_toggle="peer-checked:bg-black"
             />
           </div>
         </div>
@@ -128,9 +126,12 @@ import {
   InboxStackIcon,
   UsersIcon,
 } from '@heroicons/vue/24/solid'
+import { useI18n } from 'vue-i18n'
 
 const orgStore = useOrgStore()
 const { updateOrg } = initRequireData()
+
+const { t: $t } = useI18n()
 
 /**chỉ hiện hội thoại của nv */
 const org_is_only_visible_client_of_staff = computed({

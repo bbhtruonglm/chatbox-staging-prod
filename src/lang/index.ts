@@ -19,6 +19,8 @@
 import { createI18n } from 'vue-i18n'
 import { LocaleSingleton } from '@/utils/helper/Locale'
 
+import { LIB_LANGUAGE } from '@bbhhainx/chat-core'
+// import { LIB_LANGUAGE } from '@chat'
 import vn from '@/lang/vn'
 import en from '@/lang/en'
 import th from '@/lang/th'
@@ -30,10 +32,22 @@ export const i18n = createI18n({
   fallbackLocale: 'vnxxxxx',
   // fallbackLocale: 'vn',
   messages: {
-    vn,
-    vi: vn,
-    en,
-    us: en,
+    vn: {
+      ...vn,
+      ...LIB_LANGUAGE.vi,
+    },
+    vi: {
+      ...vn,
+      ...LIB_LANGUAGE.vi,
+    },
+    en: {
+      ...en,
+      ...LIB_LANGUAGE.en,
+    },
+    us: {
+      ...en,
+      ...LIB_LANGUAGE.en,
+    },
     th,
   },
   // tắt cảnh báo nếu không tìm thấy key

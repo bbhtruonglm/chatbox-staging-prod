@@ -6,7 +6,6 @@
     width="400px"
     height="430px"
     position="RIGHT"
-    :back="350"
 		:distance="20"
 		:class_container="'!fixed'"
   >

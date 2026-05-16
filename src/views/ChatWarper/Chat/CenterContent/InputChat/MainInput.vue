@@ -28,7 +28,6 @@
           width="auto"
           height="auto"
           :is_fit="false"
-          :back="100"
         >
           <emoji-picker
             @emoji-click="onEmojiClick"

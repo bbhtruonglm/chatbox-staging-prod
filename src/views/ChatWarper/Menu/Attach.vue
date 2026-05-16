@@ -4,23 +4,13 @@
     :is_fit="false"
     width="349px"
     height="auto"
-    position="RIGHT"
+    position="BOTTOM"
     class_content="flex flex-col gap-1 max-h-[calc(100vh-100px)] overflow-y-auto"
   >
-    <MenuTitle :title="$t('v1.view.main.dashboard.nav.chat')" />
-    <MenuItem
-      :icon="ChatIcon"
-      :title="$t('v1.view.main.dashboard.nav.chat')"
-      :is_selected="true"
-    />
-    <MenuItem
-      @click="$router.push('/dashboard/select-page')"
-      :icon="FlagIcon"
-      :title="$t('Trình quản lý Trang')"
-    />
-    <hr class="my-1" />
     <MenuTitle :title="$t('v1.common.page')" />
     <MenuItem
+      v-if="!commonStore.in_merchant"
+      class="xl:hidden"
       @click="$external_site.openMerchant('login', 'a/order')"
       :icon="OrderIcon"
       :title="$t('v1.common.order')"
@@ -28,7 +18,10 @@
       <NewTabIcon class="flex-shrink-0 w-4 h-4 text-gray-500" />
     </MenuItem>
     <MenuItem
-      @click="$external_site.openPageAnalytic()"
+      class="xl:hidden"
+      @click="() => {
+        commonStore.analytic_url = $external_site.createAnalyticUrl()
+      }"
       :icon="AnalyticIcon"
       :title="$t('v1.view.main.dashboard.nav.analytic')"
     >
@@ -55,7 +48,7 @@
 </template>
 
 <script setup lang="ts">
-import { useConversationStore, useOrgStore, usePageStore } from '@/stores'
+import { useCommonStore, useConversationStore, useOrgStore, usePageStore } from '@/stores'
 import { ExternalSite } from '@/utils/helper/ExternalSite'
 import { container } from 'tsyringe'
 import { ref } from 'vue'
@@ -80,6 +73,7 @@ const { t: $t } = useI18n()
 const $router = useRouter()
 const orgStore = useOrgStore()
 const pageStore = usePageStore()
+const commonStore = useCommonStore()
 const conversationStore = useConversationStore()
 const $external_site = container.resolve(ExternalSite)
 

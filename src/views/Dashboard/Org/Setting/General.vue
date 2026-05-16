@@ -9,7 +9,6 @@
     <template #item>
       <Toggle
         v-model="org_is_active_2fa"
-        class_toggle="peer-checked:bg-black"
       >
         {{ $t('v1.view.main.dashboard.org.setting.require_two_factor') }}
       </Toggle>

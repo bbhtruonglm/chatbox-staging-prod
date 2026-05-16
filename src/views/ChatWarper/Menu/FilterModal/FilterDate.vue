@@ -5,7 +5,6 @@
     width="450px"
     height="auto"
     position="RIGHT"
-    :back="150"
   >
     <Date />
   </Popover>
@@ -15,7 +14,6 @@
     width="450px"
     height="auto"
     position="RIGHT"
-    :back="150"
     >
       <Date />
     </Dropdown>

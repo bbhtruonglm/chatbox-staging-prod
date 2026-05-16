@@ -1,5 +1,7 @@
 <template>
-  <div class="border-b font-semibold pb-1 flex items-center justify-between">
+  <div
+    class="border-b theme-border font-semibold pb-1 flex items-center justify-between"
+  >
     <MenuTitle
       v-if="filter_post"
       :title="$t('v1.view.main.dashboard.chat.filter.post.filter_by_post')"
@@ -26,7 +28,7 @@
       ref="search_ref"
       type="text"
       :placeholder="$t('Tìm kiếm id bài đăng')"
-      class="border px-3 py-1 w-full rounded-lg focus:outline-none text-sm"
+      class="border theme-border theme-card-secondary px-3 py-1 w-full rounded-lg focus:outline-none text-sm"
       v-on:keyup="searchPost"
       v-model="search_post_id"
     />
@@ -36,7 +38,7 @@
     :class="{ 'h-[250px]': !filter_post, 'h-[420px]': filter_post }"
   >
     <div
-      class="w-full flex items-center justify-between py-2.5 border-b cursor-pointer hover:bg-orange-100 px-2"
+      class="w-full flex items-center justify-between py-2.5 border-b theme-border theme-hover cursor-pointer px-2"
       v-for="(post, index) in posts"
       @click="selectPost(index)"
     >
@@ -60,7 +62,7 @@
               {{
                 format(
                   new Date(post?.content?.created_time || 0),
-                  'HH:mm dd/MM/yyyy'
+                  'HH:mm dd/MM/yyyy',
                 )
               }}
             </div>
@@ -85,7 +87,7 @@
     id="filter_popover_ref"
   >
     <div class="grid grid-cols-3 mb-3 gap-3">
-      <div class="text-sm text-black">
+      <div class="text-sm">
         {{ $t('v1.view.main.dashboard.chat.filter.post.page_reply') }}
       </div>
       <div>
@@ -116,7 +118,7 @@
       </div>
     </div>
     <div class="grid grid-cols-3 mb-3 gap-3">
-      <div class="text-sm text-black">
+      <div class="text-sm">
         {{ $t('v1.view.main.dashboard.chat.filter.post.page_inbox') }}
       </div>
       <div>
@@ -147,7 +149,7 @@
       </div>
     </div>
     <div class="grid grid-cols-3 mb-3 gap-3">
-      <div class="text-sm text-black">
+      <div class="text-sm">
         {{ $t('v1.view.main.dashboard.chat.filter.post.have_phone') }}
       </div>
       <div>
@@ -174,7 +176,7 @@
       </div>
     </div>
     <div class="grid grid-cols-3 mb-3 gap-3">
-      <div class="text-sm text-black">
+      <div class="text-sm">
         {{ $t('v1.view.main.dashboard.chat.filter.post.have_email') }}
       </div>
       <div>
@@ -204,7 +206,7 @@
       class="flex items-center justify-between cursor-pointer"
       @click.stop="date_picket_ref?.toggle"
     >
-      <div class="text-sm text-black">Chọn thời gian</div>
+      <div class="text-sm">Chọn thời gian</div>
       <div class="cursor-pointer">
         <img
           :src="ArrowRightIcon"
@@ -214,7 +216,7 @@
       </div>
     </div>
   </div>
-  <div class="w-full flex justify-end absolute bottom-3 right-3">
+  <div class="w-full flex justify-end">
     <button
       @click="cancelFilter"
       class="text-white bg-gray-500 px-3 py-1 rounded-lg mr-3"
@@ -320,7 +322,6 @@ function cancelFilter() {
     is_private_reply: '',
     post_id: '',
   }
-
 
   // dừng nextTick để đợi filter_keys.value thay đổi mới gán
   nextTick(() => {

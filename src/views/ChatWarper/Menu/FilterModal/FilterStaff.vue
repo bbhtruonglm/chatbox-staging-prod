@@ -5,7 +5,6 @@
     width="450px"
     height="500px"
     position="RIGHT"
-    :back="350"
   >
     <Staff
       v-model:staff_list="staff_list"
@@ -18,7 +17,6 @@
     width="450px"
     height="500px"
     position="RIGHT"
-    :back="350"
   >
     <Staff
       v-model:staff_list="staff_list"

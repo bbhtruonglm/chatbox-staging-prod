@@ -1,14 +1,27 @@
 <template>
   <button @click="openMenu">
-    <div class="relative w-fit mx-auto">
-      <Badge
-        v-if="orgStore.count_noti"
-        :value="orgStore.count_noti"
-        class="absolute z-10 -right-2 -top-1"
-      />
-      <StaffAvatar
-        :id="chatbotUserStore.chatbot_user?.user_id"
-        class="w-9 h-9 hover:brightness-90 rounded-full"
+    <div class="flex gap-2 items-center">
+      <div class="relative">
+        <Badge
+          v-if="orgStore.count_noti"
+          :value="orgStore.count_noti"
+          class="absolute z-10 -top-2 -left-2"
+        />
+        <StaffAvatar
+          :id="chatbotUserStore.chatbot_user?.user_id"
+          class="hover:brightness-90 rounded-full"
+          :style="{ width: `${size}px`, height: `${size}px` }"
+        />
+      </div>
+      <p
+        v-if="show_name"
+        class="font-medium"
+      >
+        {{ chatbotUserStore.chatbot_user?.full_name }}
+      </p>
+      <ChevronDownIcon
+        v-if="show_name"
+        class="size-4"
       />
     </div>
   </button>
@@ -23,35 +36,6 @@
     class_content="flex flex-col gap-1"
   >
     <template v-if="!$device.isMobile()">
-      <!-- <template v-if="orgStore.isAdminOrg() || orgStore.is_selected_all_org">
-        <MenuTitle :title="$t('v1.view.main.dashboard.header.business')" />
-        <MenuItem
-          @click="redirectMenu('org')"
-          :icon="BriefCaseIcon"
-          :title="$t('v1.view.main.dashboard.header.menu.setting_business')"
-        />
-        <MenuItem
-          @click="redirectMenu('org')"
-          :icon="UsersIcon"
-          :title="$t('v1.view.main.dashboard.header.menu.staff_manager')"
-        />
-        <MenuItem
-          @click="redirectMenu('org/pay')"
-          :icon="CheckBadgeIcon"
-          :title="$t('v1.view.main.dashboard.header.menu.pricing_manager')"
-        > -->
-      <!-- <Badge
-        :value="1"
-        class="flex-shrink-0"
-      /> -->
-      <!-- </MenuItem>
-        <MenuItem
-          @click="redirectMenu('widget')"
-          :icon="SquareIcon"
-          :title="$t('v1.view.main.dashboard.nav.widget')"
-        />
-        <hr class="my-1" />
-      </template> -->
       <MenuTitle :title="$t('v1.view.main.dashboard.header.personal')" />
       <MenuItem
         @click="openUserInfoModal()"
@@ -70,6 +54,11 @@
         />
       </MenuItem>
     </template>
+    <MenuItem
+      @click="openDisplaySettingModal()"
+      :icon="PaintBrushIcon"
+      :title="$t('Thiết lập giao diện')"
+    />
     <MenuItem
       @click="openKeyboardShortcutModal()"
       :icon="QuestionMarkCircleIcon"
@@ -90,6 +79,7 @@
   <Alert ref="modal_alert_ref" />
   <UserInfo ref="modal_user_info_ref" />
   <ModalKeyboardShortcut ref="modal_keyboard_shortcut" />
+  <DisplaySettingModal ref="modal_display_setting_ref" />
 </template>
 <script setup lang="ts">
 import { count_all_noti, count_noti } from '@/service/api/chatbox/billing'
@@ -100,6 +90,7 @@ import { ExternalSite } from '@/utils/helper/ExternalSite'
 import { container } from 'tsyringe'
 import { onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { isEmpty } from 'lodash'
 
 import StaffAvatar from '@/components/Avatar/StaffAvatar.vue'
 import Badge from '@/components/Badge.vue'
@@ -109,6 +100,7 @@ import MenuTitle from '@/components/Main/Dashboard/MenuTitle.vue'
 import Alert from '@/components/User/Alert.vue'
 import UserInfo from '@/components/User/UserInfo.vue'
 import ModalKeyboardShortcut from '@/views/ChatWarper/Menu/ModalKeyboardShortcut.vue'
+import DisplaySettingModal from './User/DisplaySettingModal.vue'
 
 import BellIcon from '@/components/Icons/Bell.vue'
 import BriefCaseIcon from '@/components/Icons/BriefCase.vue'
@@ -118,19 +110,26 @@ import ServerSettingIcon from '@/components/Icons/ServerSetting.vue'
 import SquareIcon from '@/components/Icons/Square.vue'
 import UserIcon from '@/components/Icons/User.vue'
 import UsersIcon from '@/components/Icons/Users.vue'
-import { QuestionMarkCircleIcon } from '@heroicons/vue/24/solid'
+import { PaintBrushIcon, QuestionMarkCircleIcon } from '@heroicons/vue/24/solid'
+import { ChevronDownIcon } from 'lucide-vue-next'
 
 import type { ModalPosition } from '@/service/interface/vue'
-import { isEmpty } from 'lodash'
 
 const $props = withDefaults(
   defineProps<{
     /**vị trí của modal */
     position: ModalPosition
     /**lùi lại bao nhiêu */
-    back: number
+    back?: number
+    /** size của ảnh */
+    size: number
+    /** có thể hiện tên  */
+    show_name?: boolean
   }>(),
-  {}
+  {
+    size: 36,
+    back: 0,
+  }
 )
 
 const chatbotUserStore = useChatbotUserStore()
@@ -148,6 +147,9 @@ const modal_user_info_ref = ref<InstanceType<typeof UserInfo>>()
 /** Ref của modal keyboard shortcut */
 const modal_keyboard_shortcut =
   ref<InstanceType<typeof ModalKeyboardShortcut>>()
+
+/** Ref của modal display setting */
+const modal_display_setting_ref = ref<InstanceType<typeof DisplaySettingModal>>()
 
 /** đếm số thông báo khi khởi động / Ẩn vì đang dùng watch để call rồi */
 // onMounted(countNoti)
@@ -247,6 +249,15 @@ function openKeyboardShortcutModal() {
 
   /** mở modal phím tắt */
   modal_keyboard_shortcut.value?.toggleModal?.()
+}
+
+/**mở modal thiết lập giao diện */
+function openDisplaySettingModal() {
+  /** tắt menu dropdown */
+  user_menu_ref.value?.toggleDropdown()
+
+  /** mở modal thiết lập giao diện */
+  modal_display_setting_ref.value?.toggleModal?.()
 }
 
 /**mở modal của noti */

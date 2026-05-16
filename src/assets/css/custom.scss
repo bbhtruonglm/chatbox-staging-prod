@@ -34,11 +34,19 @@
   );
 }
 
+.dark .bg-gradient-primary {
+  background: none;
+}
+
 .rounded-oval {
   mask-position: center;
   mask-repeat: no-repeat;
   mask-size: contain;
   mask-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' fill='none'%3E%3Cpath fill='%23000' d='M100 0C20 0 0 20 0 100s20 100 100 100 100-20 100-100S180 0 100 0z'/%3E%3C/svg%3E");
+}
+
+.scroll-hidden::-webkit-scrollbar {
+  display: none;
 }
 
 .message-box {
@@ -69,4 +77,12 @@
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
   border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+select {
+  background-color: transparent;
+
+  option {
+    color: #000;
+  }
 }

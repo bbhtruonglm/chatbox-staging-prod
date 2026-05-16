@@ -11,7 +11,7 @@
       <Toggle
         :modelValue="is_enable"
         @click="$main.toggleClientChatbot()"
-        :class_toggle="`peer-checked:bg-black !h-4 !w-7 after:!h-3 after:!w-3 ${
+        :class_toggle="`!h-4 !w-7 after:!h-3 after:!w-3 ${
           ai_agent_working_hour_answer?.type === 'NOT_ANSWER' &&
           'cursor-not-allowed'
         }`"

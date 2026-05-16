@@ -15,10 +15,10 @@
       >
         <div
           @click.stop
-          class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white py-2 px-5 shadow-lg border border-gray-200 modal flex flex-col"
+          class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-xl theme-card py-2 px-5 shadow-lg border border-gray-200 modal flex flex-col"
         >
           <div
-            class="flex items-center justify-between border-b py-2 flex-shrink-0"
+            class="flex items-center justify-between border-b theme-border py-2 flex-shrink-0"
           >
             <div />
             <div class="text-lg font-semibold">
@@ -26,25 +26,25 @@
             </div>
             <div
               @click="toggleModal"
-              class="cursor-pointer w-6 h-6 bg-slate-100 rounded-full flex items-center justify-center"
+              class="cursor-pointer w-6 h-6 theme-active rounded-full flex items-center justify-center"
             >
               <CloseIcon class="w-3 h-3" />
             </div>
           </div>
           <div class="overflow-y-auto flex-grow min-h-0">
-            <div class="section border-b">
+            <div class="section border-b theme-border">
               <div class="title">
                 {{ $t('v1.view.main.dashboard.org.pay.account') }}
               </div>
               <div class="flex items-center gap-3">
                 <div class="relative">
                   <StaffAvatar
-                    :id="chatbotUserStore.chatbot_user?.user_id"
+                    :id="chatbotUserStore.getStaffId()"
                     class="rounded-oval w-11 h-11"
                   />
                   <div
                     @click="$main.handleUpload()"
-                    class="p-1 rounded-full bg-slate-300 absolute -bottom-1 -right-1 cursor-pointer"
+                    class="p-1 rounded-full theme-active absolute -bottom-1 -right-1 cursor-pointer"
                   >
                     <CameraIcon class="size-4" />
                   </div>
@@ -80,7 +80,7 @@
                   $t('v1.view.main.dashboard.user.noti_description')
                 "
               >
-                <Toggle class_toggle="peer-checked:bg-black" />
+                <Toggle />
               </Item>
               <Item
                 :icon="GlobalBoldIcon"
@@ -126,7 +126,6 @@
                     chatbotUserStore.personal_settings
                       .is_enable_personal_setting
                   "
-                  class_toggle="peer-checked:bg-black"
                 />
               </Item>
               <template
@@ -138,16 +137,14 @@
                   :icon="UserCircleIcon"
                   :title="$t('v1.view.main.dashboard.user.show_page_avatar')"
                   :description="
-                    chatbotUserStore.personal_settings.is_hide_page_avatar
-                      ? $t('Ẩn toàn bộ ảnh đại diện của trang trên hội thoại')
-                      : $t('Hiện toàn bộ ảnh đại diện của trang trên hội thoại')
+                    chatbotUserStore.setting_conversation.is_page_icon
+                      ? $t('Hiện toàn bộ ảnh đại diện của trang trên hội thoại')
+                      : $t('Ẩn toàn bộ ảnh đại diện của trang trên hội thoại')
                   "
                 >
                   <Toggle
-                    v-model="
-                      chatbotUserStore.personal_settings.is_hide_page_avatar
-                    "
-                    class_toggle="peer-checked:bg-black"
+                    :model-value="chatbotUserStore.setting_conversation.is_page_icon"
+                    @update:model-value="handleTogglePageAvatar"
                   />
                 </Item>
                 <Item
@@ -158,10 +155,9 @@
                   "
                 >
                   <select
-                    v-model="
-                      chatbotUserStore.personal_settings.display_label_type
-                    "
+                    :value="chatbotUserStore.conversation_label_display_mode"
                     class="py-2 rounded-md focus:outline-none border px-3 text-sm cursor-pointer max-w-44 truncate pr-0"
+                    @change="handleChangeConversationLabelMode"
                   >
                     <option
                       v-for="(title, key) of SELECT_LABEL_TYPE"
@@ -208,6 +204,7 @@ import { CameraIcon } from 'lucide-vue-next'
 import Loading from '@/components/Icons/Loading.vue'
 import { loading } from '@/utils/decorator/Loading'
 import { N4SerivceAppUser } from '@/utils/api/N4Service/User'
+import type { SettingConversationLabelType } from '@/service/interface/app/chatbot_user'
 
 const { t: $t } = useI18n()
 
@@ -221,12 +218,11 @@ const chatbotUserStore = useChatbotUserStore()
 
 /**các lựa chọn chế độ hiển thị nhãn */
 const SELECT_LABEL_TYPE = {
+  NONE: $t('Ẩn'),
   // hiển thị văn bản
   FULL: $t('v1.view.main.dashboard.user.text'),
   // hiển thị chấm màu
   ICON: $t('v1.view.main.dashboard.user.dot'),
-  // hiển thị icon và chú thích
-  ICON_TOOLTIP: $t('v1.view.main.dashboard.user.dot_tooltip'),
 }
 
 /**ẩn hiện modal */
@@ -242,6 +238,23 @@ function toggleModal() {
 
   // bắn sự kiện ra ngoài khi modal đã tắt
   if (!is_open.value) $emit('close_modal')
+}
+
+/** handle toggle page avatar */
+async function handleTogglePageAvatar(value: boolean | undefined) {
+  // update setting conversation
+  await chatbotUserStore.updateSettingConversation({
+    is_page_icon: !!value,
+  })
+}
+
+/** handle change conversation label mode */
+async function handleChangeConversationLabelMode($event: Event) {
+  const { value } = $event.target as HTMLSelectElement
+  // update chế độ hiển thị nhãn
+  await chatbotUserStore.updateConversationLabelDisplayMode(
+    value as SettingConversationLabelType
+  )
 }
 
 class Main {

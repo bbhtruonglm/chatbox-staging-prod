@@ -4,16 +4,72 @@
     class="p-1 flex h-full overflow-hidden overflow-y-auto bg-[#0015810f] rounded-b-xl justify-center relative"
   >
     <div
-      v-if="is_loading"
-      class="relative z-10"
+      v-if="is_initial_loading"
+      class="w-full max-w-[430px] h-fit bg-white rounded-lg flex flex-col py-2 border overflow-hidden"
     >
-      <div class="fixed left-1/2 -translate-x-1/2">
-        <Loading class="mx-auto" />
+      <div class="px-3 flex items-center gap-3">
+        <div
+          class="size-8 border rounded-full flex-shrink-0 bg-slate-200 animate-pulse"
+        />
+        <div class="flex-grow flex flex-col gap-2">
+          <div class="w-36 h-4 bg-slate-200 rounded-full animate-pulse" />
+          <div class="w-28 h-3 bg-slate-200 rounded-full animate-pulse" />
+        </div>
+      </div>
+      <div class="py-2 px-3 flex flex-col gap-2">
+        <div class="w-full h-3 bg-slate-200 rounded-full animate-pulse" />
+        <div class="w-[92%] h-3 bg-slate-200 rounded-full animate-pulse" />
+        <div class="w-[78%] h-3 bg-slate-200 rounded-full animate-pulse" />
+        <div class="flex items-center justify-end gap-3 mt-1">
+          <div class="w-28 h-4 bg-slate-200 rounded-full animate-pulse" />
+          <div class="w-28 h-4 bg-slate-200 rounded-full animate-pulse" />
+        </div>
+      </div>
+      <div class="w-full h-56 border-y bg-slate-100 animate-pulse" />
+      <div class="py-2 px-3 grid grid-cols-3 gap-2.5">
+        <div
+          v-for="index in 3"
+          :key="`full-post-stat-skeleton-${index}`"
+          class="flex flex-col gap-2"
+        >
+          <div class="w-14 h-3 bg-slate-200 rounded-full animate-pulse" />
+          <div class="w-10 h-3 bg-slate-200 rounded-full animate-pulse" />
+        </div>
+      </div>
+      <div class="flex flex-col gap-4 px-3 py-2">
+        <div
+          v-for="index in 3"
+          :key="`full-post-comment-skeleton-${index}`"
+          class="flex gap-3"
+        >
+          <div
+            class="size-10 rounded-full bg-slate-200 animate-pulse flex-shrink-0"
+          />
+          <div class="min-w-0 flex-grow flex flex-col gap-2">
+            <div class="rounded-xl bg-slate-100 py-3 px-3 flex flex-col gap-2">
+              <div class="w-32 h-3 bg-slate-200 rounded-full animate-pulse" />
+              <div class="w-full h-3 bg-slate-200 rounded-full animate-pulse" />
+              <div class="w-3/4 h-3 bg-slate-200 rounded-full animate-pulse" />
+            </div>
+            <div class="flex items-center gap-5">
+              <div class="w-12 h-3 bg-slate-200 rounded-full animate-pulse" />
+              <div class="w-16 h-3 bg-slate-200 rounded-full animate-pulse" />
+              <div class="w-20 h-3 bg-slate-200 rounded-full animate-pulse" />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     <div
-      class="w-full max-w-[430px] h-fit bg-white rounded-lg flex flex-col py-2 border"
+      v-else
+      class="w-full max-w-[430px] h-fit theme-card rounded-lg flex flex-col py-2 border overflow-hidden relative"
     >
+      <div
+        v-if="is_loading"
+        class="absolute inset-0 z-10 theme-card-secondary flex items-center justify-center"
+      >
+        <Loading class="mx-auto" />
+      </div>
       <div class="px-3 flex items-center gap-3">
         <PageAvatar
           :page_info="conversationStore.getPage()"
@@ -32,7 +88,7 @@
           </span>
         </div>
       </div>
-      <div class="py-2 px-3 text-xs">
+      <div class="py-2 px-3 text-sm">
         <span
           class="whitespace-pre-line"
           :class="{
@@ -96,7 +152,6 @@
           </span>
         </span>
       </div>
-
       <div
         v-if="post_id"
         class="overflow-y-auto flex flex-col gap-3"
@@ -167,6 +222,8 @@ const LIMIT_RECORD = 3
 
 /**đang tải dữ liệu */
 const is_loading = ref<boolean>(false)
+/**loading lần đầu để hiển thị skeleton */
+const is_initial_loading = ref<boolean>(false)
 /** Comments trong bài post */
 const post_comments = ref<FacebookCommentPost[]>([])
 /** gắn cờ đã load hết bình luận chính */
@@ -220,7 +277,6 @@ class Main {
     private readonly API_POST = container.resolve(N4SerivceAppPost)
   ) {}
   /**đọc dữ liệu của bài post đại diện cho hội thoại này */
-  @loadingV2(is_loading, 'value')
   @error()
   async getPostInfo() {
     // xác thực dữ liệu
@@ -234,7 +290,6 @@ class Main {
     )
   }
   /** Lấy bình luận chính từ bài post của fb */
-  @loadingV2(is_loading, 'value')
   @error()
   async getFbPostComments() {
     // xác thực dữ liệu
@@ -273,11 +328,21 @@ class Main {
     // xoá dữ liệu cũ
     this.clearData()
 
-    // lấy dữ liệu bài post
-    await this.getPostInfo()
+    // không có dữ liệu để tải
+    if (!page_id.value || !post_id.value) return
 
-    // tự động load bình luận
-    await this.getFbPostComments()
+    try {
+      // hiển thị skeleton cho lần tải đầu
+      is_initial_loading.value = true
+
+      // lấy dữ liệu bài post
+      await this.getPostInfo()
+
+      // tự động load bình luận
+      await this.getFbPostComments()
+    } finally {
+      is_initial_loading.value = false
+    }
   }
   /**xử lý khi có bình luận mới ngoài luồng */
   socketNewMessage({ detail }: CustomEventMessage) {

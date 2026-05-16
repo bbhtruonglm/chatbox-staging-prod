@@ -5,7 +5,6 @@
     height="auto"
     :is_fit="false"
     position="BOTTOM"
-    :back="309"
     :distance="9"
     class_content="flex flex-col gap-1"
   >

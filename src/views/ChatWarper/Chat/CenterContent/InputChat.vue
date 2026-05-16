@@ -8,9 +8,9 @@
     <!-- Trả lời bình luận bài viết fb -->
     <ReplyComment v-if="messageStore.reply_comment?.root_comment_id" />
     <ReplyMessage v-if="messageStore.reply_message?.root_message_id" />
-    <ListLabel
+    <!-- <ListLabel
       v-if="conversationStore.select_conversation?.conversation_type !== 'POST'"
-    />
+    /> -->
     <PreviewAttachment />
     <MainInput
       v-if="conversationStore.select_conversation?.conversation_type !== 'POST'"

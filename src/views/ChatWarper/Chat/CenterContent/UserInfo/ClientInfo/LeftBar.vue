@@ -1,6 +1,6 @@
 <template>
   <div
-    class="w-[263px] bg-white rounded-md flex flex-col p-2 gap-2 overflow-y-auto flex-shrink-0"
+    class="w-[263px] theme-card rounded-md flex flex-col p-2 gap-2 overflow-y-auto flex-shrink-0"
   >
     <div class="py-2 px-5">
       <BlingEffect

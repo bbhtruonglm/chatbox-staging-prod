@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-slate-100 py-1 px-5 rounded text-sm font-semibold">
+  <div class="theme-card-secondary py-1 px-5 rounded text-sm font-semibold">
     {{ $t('v1.view.main.dashboard.chat.client.attribute_detail') }}
   </div>
   <EditItem
@@ -17,7 +17,7 @@
     {{ $t('v1.view.main.dashboard.chat.client.add_attr') }}
     <NewTabIcon class="w-3.5 h-3.5" />
   </button>
-  <div class="bg-slate-100 py-1 px-5 rounded text-sm font-semibold">
+  <div class="theme-card-secondary py-1 px-5 rounded text-sm font-semibold">
     {{ $t('v1.view.main.dashboard.chat.client.system_attribute') }}
   </div>
   <InfoItem

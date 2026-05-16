@@ -1,8 +1,8 @@
 <template>
   <div
-    class="flex gap-2 items-center py-1.5 px-2 rounded-lg bg-slate-100 hover:brightness-90"
+    class="flex gap-2 items-center py-1.5 px-2 rounded-lg theme-card hover:brightness-90"
   >
-    <div class="p-1 rounded-lg bg-slate-200">
+    <div class="p-1 rounded-lg theme-active">
       <component
         :is="icon"
         class="size-5"

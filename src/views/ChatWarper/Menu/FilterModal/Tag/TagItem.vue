@@ -1,5 +1,5 @@
 <template>
-    <div :class="is_disable ? 'opacity-50' : 'cursor-pointer'" class="p-2 border-b hover:bg-orange-100">
+    <div :class="is_disable ? 'opacity-50' : 'cursor-pointer'" class="p-2 border-b theme-border theme-hover">
         <div class="flex items-center justify-between">
             <div class="w-5 h-5 rounded-full mr-3" :style="{ 'background': label?.bg_color }">
             </div>

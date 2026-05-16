@@ -16,6 +16,7 @@ import type { CbError } from '@/service/interface/function'
 
 import '@/assets/css/tailwind.css'
 import '@/utils/helper/Validate'
+import '../node_modules/@bbhhainx/chat-core/dist/chat-core.css'
 
 import { container } from 'tsyringe'
 import { EnvManage } from './utils/base/EnvManage'

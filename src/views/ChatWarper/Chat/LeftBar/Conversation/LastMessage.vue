@@ -1,9 +1,9 @@
 <template>
   <div
     :class="source?.unread_message_amount ? 'font-medium' : 'text-slate-500'"
-    class="flex items-center text-xs gap-2 justify-between"
+    class="flex items-center gap-2 justify-between"
   >
-    <div class="truncate h-5">
+    <div class="truncate text-sm-">
       <template v-if="source?.last_message_type === 'page'">
         {{ $t('v1.view.main.dashboard.chat.you') }}
       </template>

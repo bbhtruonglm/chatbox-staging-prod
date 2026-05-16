@@ -1,42 +1,66 @@
 <template>
   <SkeletonLoading v-if="conversationStore.is_loading_list" />
   <template v-if="!conversationStore.is_loading_list">
-    <RecycleScroller
-      @scroll="($event: UIEvent) => $main.loadMoreConversation($event)"
+    <div
       v-if="size(conversationStore.conversation_list)"
-      class="overflow-y-auto"
-      :items="map(conversationStore.conversation_list)"
-      :item-size="86"
-      key-field="data_key"
+      class="relative min-h-0 flex-1"
     >
-      <template #default="{ item }">
-        <ConversationItem :source="item" />
-      </template>
-      <template #after>
-        <div
-          v-if="is_loading && !conversationStore.is_loading_list"
-          class="flex flex-col"
-        >
+      <RecycleScroller
+        ref="conversation_scroller"
+        @scroll="($event: UIEvent) => $main.handleScrollConversation($event)"
+        class="h-full overflow-y-auto"
+        :items="map(conversationStore.conversation_list)"
+        :item-size="86"
+        key-field="data_key"
+      >
+        <template #default="{ item }">
+          <ConversationItem :source="item" />
+        </template>
+        <template #after>
           <div
-            v-for="i in 2"
-            :key="i"
-            class="flex items-center px-2 py-3 gap-3 h-[86px]"
+            v-if="is_loading && !conversationStore.is_loading_list"
+            class="flex flex-col"
           >
             <div
-              class="w-10 h-10 rounded-full bg-slate-200 animate-pulse flex-shrink-0"
-            ></div>
-            <div class="flex-1 flex flex-col gap-1 min-w-0">
+              v-for="i in 2"
+              :key="i"
+              class="flex items-center px-2 py-3 gap-3 h-[86px]"
+            >
               <div
-                class="w-24 h-3 bg-slate-200 rounded-full animate-pulse"
+                class="w-10 h-10 rounded-full bg-slate-200 animate-pulse flex-shrink-0"
               ></div>
-              <div
-                class="w-44 h-2 bg-slate-200 rounded-full animate-pulse"
-              ></div>
+              <div class="flex-1 flex flex-col gap-1 min-w-0">
+                <div
+                  class="w-24 h-3 bg-slate-200 rounded-full animate-pulse"
+                ></div>
+                <div
+                  class="w-44 h-2 bg-slate-200 rounded-full animate-pulse"
+                ></div>
+              </div>
             </div>
           </div>
-        </div>
-      </template>
-    </RecycleScroller>
+        </template>
+      </RecycleScroller>
+      <Transition
+        enter-active-class="transition duration-150 ease-out"
+        enter-from-class="opacity-0 translate-y-2"
+        enter-to-class="opacity-100 translate-y-0"
+        leave-active-class="transition duration-150 ease-in"
+        leave-from-class="opacity-100 translate-y-0"
+        leave-to-class="opacity-0 translate-y-2"
+      >
+        <button
+          v-if="is_show_scroll_top"
+          type="button"
+          :aria-label="$t('Cuộn lên đầu')"
+          class="absolute bottom-4 left-4 z-10 flex size-10 items-center justify-center rounded-full border border-zinc-300 bg-zinc-200/95 text-zinc-600 shadow-lg hover:bg-zinc-300 dark:border-zinc-600 dark:bg-zinc-700/95 dark:text-zinc-100 dark:hover:bg-zinc-600"
+          v-tooltip.top="$t('Cuộn lên đầu')"
+          @click="$main.scrollToTopConversation()"
+        >
+          <ArrowUpIcon class="size-5" />
+        </button>
+      </Transition>
+    </div>
     <div v-else>
       <img
         src="@/assets/icons/empty-page.svg"
@@ -69,8 +93,19 @@ import { error } from '@/utils/decorator/Error'
 import { loadingV2 } from '@/utils/decorator/Loading'
 import { waterfall } from 'async'
 import { differenceInHours } from 'date-fns'
-import { find, keys, map, mapValues, orderBy, pick, set, size } from 'lodash'
+import {
+  find,
+  isEmpty,
+  isEqual,
+  keys,
+  map,
+  mapValues,
+  pick,
+  set,
+  size,
+} from 'lodash'
 import { container } from 'tsyringe'
+import { ArrowUpIcon } from 'lucide-vue-next'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { RecycleScroller } from 'vue-virtual-scroller'
@@ -113,12 +148,16 @@ const orgStore = useOrgStore()
 
 /**có đang load hội thoại hay không */
 const is_loading = ref(false)
+/** co hien nut scroll len dau danh sach hoi thoai khong */
+const is_show_scroll_top = ref(false)
 /**toàn bộ hội thoại đã được load hết chưa */
 const is_done = ref(false)
 /**phân trang kiểu after */
 const after = ref<number[]>()
 /**thời gian component được render */
 const mounted_time = ref<Date>(new Date())
+const conversation_scroller = ref<{ $el?: HTMLElement }>()
+const SHOW_SCROLL_TOP_OFFSET = 120
 
 /** dữ liệu lọc trừ conversation_type */
 const option_filter_page_data = computed(() => {
@@ -159,6 +198,7 @@ class Main {
       'label_id',
       'last_read_message',
       'staff_read',
+      'last_message_type'
     ])
 
     /** thay đổi obj nhưng không cho trigger watch */
@@ -173,6 +213,9 @@ class Main {
     /** cấu hình trang đặc biệt */
     const SPECIAL_PAGE_CONFIG = this.SERVICE_CALC_SPECIAL_PAGE_CONFIGS.exec()
 
+    /** lọc theo tab */
+    const TAB = conversationStore.option_filter_page_data.tab
+
     /** sort hội thoại */
     const SORT =
       SPECIAL_PAGE_CONFIG?.sort_conversation === 'UNREAD'
@@ -182,17 +225,60 @@ class Main {
     /** ghi đè 1 số lọc tin nhắn */
     const OVERWRITE_FILTER: FilterConversation = {}
 
+    switch (TAB) {
+      case 'UNREAD':
+        OVERWRITE_FILTER.unread_message = 'true'
+        break
+      case 'UNREPLIED':
+        OVERWRITE_FILTER.not_response_client = 'true'
+        break
+    }
+
     /** chỉ cho hiện hội thoại của nhân viên và nếu không phải là chế độ xem bài viết */
+    /**kết quả phân ca */
+    const SHIFT_FILTER = SPECIAL_PAGE_CONFIG.shift_filter
+
+    /** chỉ cho hiện hội thoại của nhân viên và không phải chế độ xem bài viết */
     if (
       SPECIAL_PAGE_CONFIG.is_only_visible_client_of_staff &&
       conversationStore.option_filter_page_data.conversation_type !== 'POST'
     ) {
-      /** tạo ra filter nhân viên */
-      OVERWRITE_FILTER.staff_id = []
+      /**
+       * nếu user đã chọn filter staff trên UI → dùng luôn list đó
+       * nếu không → tạo list từ nhân viên hiện tại
+       */
+      const EXISTING_STAFF_FILTER =
+        conversationStore.option_filter_page_data.staff_id
 
-      /** thêm id mới */
-      if (chatbotUserStore.chatbot_user?.user_id) {
-        OVERWRITE_FILTER.staff_id?.push(chatbotUserStore.chatbot_user?.user_id)
+      if (EXISTING_STAFF_FILTER?.length) {
+        // dùng danh sách staff từ filter UI
+        OVERWRITE_FILTER.staff_id = [...EXISTING_STAFF_FILTER]
+      } else {
+        /** tạo ra filter nhân viên từ nhân viên hiện tại */
+        OVERWRITE_FILTER.staff_id = []
+
+        /** thêm id mới của nhân viên hiện tại */
+        if (chatbotUserStore.chatbot_user?.user_id)
+          OVERWRITE_FILTER.staff_id.push(chatbotUserStore.chatbot_user.user_id)
+
+        /** thêm id cũ, tránh lỗi hội thoại cũ chỉ có fb_staff_id */
+        if (chatbotUserStore.chatbot_user?.fb_staff_id)
+          OVERWRITE_FILTER.staff_id.push(chatbotUserStore.chatbot_user.fb_staff_id)
+      }
+
+      /**
+       * nếu phân ca đang kích hoạt và nhân viên hiện tại đang trong ca
+       * → push thêm nhân viên KHÔNG thuộc cùng ca vào danh sách
+       */
+      if (SHIFT_FILTER?.is_shift_active && SHIFT_FILTER?.is_current_staff_in_shift) {
+        // push từng staff_id còn lại (loại trừ trùng lắp)
+        for (const STAFF_ID of SHIFT_FILTER.allowed_staff_ids) {
+          // bỏ qua nếu đã có trong danh sách
+          if (OVERWRITE_FILTER.staff_id.includes(STAFF_ID)) continue
+
+          // thêm nhân viên không cùng ca vào filter
+          OVERWRITE_FILTER.staff_id.push(STAFF_ID)
+        }
       }
     }
 
@@ -221,22 +307,34 @@ class Main {
   private isPermissionViewConversation(
     conversation?: ConversationInfo,
   ): boolean {
-    /** id của nhân sự hiện tại */
-    const CURRENT_STAFF_ID =
-      chatbotUserStore.chatbot_user?.user_id ||
-      conversationStore.select_conversation?.fb_staff_id
+    /** cấu hình trang đặc biệt, đã xử lý bypass admin bên trong */
+    const SPECIAL_PAGE_CONFIG = this.SERVICE_CALC_SPECIAL_PAGE_CONFIGS.exec()
 
-    /** trạng thái của tài khoản hiện tại có phải là admin hay ko? */
-    const IS_ADMIN = conversationStore.isCurrentStaffAdmin()
+    /**kết quả phân ca */
+    const SHIFT_FILTER = SPECIAL_PAGE_CONFIG.shift_filter
 
-    // nếu bật chỉ hiện hội thoại với nhân viên được assign và
-    // id hiện tại không phải của nhân sự đó và
-    // không phải admin thì không có quyền xem
-    return !(
-      orgStore.selected_org_info?.org_config
-        ?.org_is_only_visible_client_of_staff &&
-      conversation?.fb_staff_id !== CURRENT_STAFF_ID &&
-      !IS_ADMIN
+    // nếu phân ca đang kích hoạt và nhân viên hiện tại đang trong ca
+    if (SHIFT_FILTER?.is_shift_active && SHIFT_FILTER?.is_current_staff_in_shift) {
+      /** id nhân viên được assign cho hội thoại */
+      const CONV_STAFF_ID = conversation?.user_id || conversation?.fb_staff_id
+
+      // nếu hội thoại thuộc nhân viên khác cùng ca → không cho xem
+      if (CONV_STAFF_ID && SHIFT_FILTER.same_shift_other_staff_ids.includes(CONV_STAFF_ID))
+        return false
+    }
+
+    // nếu không bật chế độ chỉ hiện hội thoại theo nhân viên thì cho xem
+    if (!SPECIAL_PAGE_CONFIG.is_only_visible_client_of_staff) return true
+
+    /** id mới của nhân viên hiện tại */
+    const CURRENT_USER_ID = chatbotUserStore.chatbot_user?.user_id
+    /** id cũ của nhân viên hiện tại */
+    const CURRENT_FB_STAFF_ID = chatbotUserStore.chatbot_user?.fb_staff_id
+
+    // kiểm tra hội thoại có thuộc nhân viên hiện tại không (dùng cả id mới và cũ)
+    return (
+      conversation?.user_id === CURRENT_USER_ID ||
+      conversation?.fb_staff_id === CURRENT_FB_STAFF_ID
     )
   }
 
@@ -262,6 +360,10 @@ class Main {
 
     /**danh sách id page */
     const PAGE_IDS = keys(pageStore.selected_page_id_list)
+
+    // nếu danh sách page rỗng thì không gọi api
+    if (isEmpty(PAGE_IDS)) return
+
     /** tính toán các cấu hình hội thoại đặc biệt */
     const { SORT, OVERWRITE_FILTER } = this.calcConversationSpecialConfig()
 
@@ -276,6 +378,15 @@ class Main {
         {
           ...conversationStore.option_filter_page_data,
           ...OVERWRITE_FILTER,
+          // TODO: Mock nội bộ trước để sau này có bổ sung sau
+          // nếu là internal thì set về chat
+          ...(conversationStore.option_filter_page_data.conversation_type ===
+          'INTERNAL'
+            ? { conversation_type: 'CHAT' }
+            : {
+                conversation_type:
+                  conversationStore.option_filter_page_data.conversation_type,
+              }),
         },
         40,
         SORT,
@@ -328,18 +439,46 @@ class Main {
 
     /** chỉ cho hiện hội thoại của nhân viên */
     if (SPECIAL_PAGE_CONFIG.is_only_visible_client_of_staff) {
-      /** tạo ra filter nhân viên */
-      OVERWRITE_FILTER.staff_id = []
+      /**
+       * nếu user đã chọn filter staff trên UI → dùng luôn list đó
+       * nếu không → tạo list từ nhân viên hiện tại
+       */
+      const EXISTING_STAFF_FILTER =
+        conversationStore.option_filter_page_data.staff_id
 
-      /** thêm id mới */
-      if (chatbotUserStore.chatbot_user?.user_id)
-        OVERWRITE_FILTER.staff_id?.push(chatbotUserStore.chatbot_user?.user_id)
+      if (EXISTING_STAFF_FILTER?.length) {
+        // dùng danh sách staff từ filter UI
+        OVERWRITE_FILTER.staff_id = [...EXISTING_STAFF_FILTER]
+      } else {
+        /** tạo ra filter nhân viên từ nhân viên hiện tại */
+        OVERWRITE_FILTER.staff_id = []
 
-      /** thêm id cũ, tránh lỗi */
-      if (chatbotUserStore.chatbot_user?.fb_staff_id)
-        OVERWRITE_FILTER.staff_id?.push(
-          chatbotUserStore.chatbot_user?.fb_staff_id,
-        )
+        /** thêm id mới */
+        if (chatbotUserStore.chatbot_user?.user_id)
+          OVERWRITE_FILTER.staff_id.push(chatbotUserStore.chatbot_user.user_id)
+
+        /** thêm id cũ, tránh lỗi */
+        if (chatbotUserStore.chatbot_user?.fb_staff_id)
+          OVERWRITE_FILTER.staff_id.push(chatbotUserStore.chatbot_user.fb_staff_id)
+      }
+
+      /**kết quả phân ca */
+      const SHIFT_FILTER = SPECIAL_PAGE_CONFIG.shift_filter
+
+      /**
+       * nếu phân ca đang kích hoạt và nhân viên hiện tại đang trong ca
+       * → push thêm nhân viên KHÔNG thuộc cùng ca vào danh sách
+       */
+      if (SHIFT_FILTER?.is_shift_active && SHIFT_FILTER?.is_current_staff_in_shift) {
+        // push từng staff_id còn lại (loại trừ trùng lắp)
+        for (const STAFF_ID of SHIFT_FILTER.allowed_staff_ids) {
+          // bỏ qua nếu đã có trong danh sách
+          if (OVERWRITE_FILTER.staff_id.includes(STAFF_ID)) continue
+
+          // thêm nhân viên không cùng ca vào filter
+          OVERWRITE_FILTER.staff_id.push(STAFF_ID)
+        }
+      }
     }
 
     /**lấy dữ liệu hội thoại */
@@ -413,6 +552,24 @@ class Main {
       )
     )
       return
+
+    /**kết quả phân ca */
+    const SHIFT_FILTER = SPECIAL_PAGE_CONFIG?.shift_filter
+
+    /** lọc hội thoại theo ca: bỏ qua hội thoại của nhân viên khác cùng ca */
+    if (
+      conversationStore.option_filter_page_data?.conversation_type !== 'POST' &&
+      SHIFT_FILTER?.is_shift_active &&
+      SHIFT_FILTER?.is_current_staff_in_shift &&
+      SHIFT_FILTER?.same_shift_other_staff_ids?.length
+    ) {
+      /** id nhân viên được assign cho hội thoại từ socket */
+      const CONV_STAFF_ID = conversation?.user_id || conversation?.fb_staff_id
+
+      // nếu hội thoại thuộc nhân viên khác cùng ca → bỏ qua
+      if (CONV_STAFF_ID && SHIFT_FILTER.same_shift_other_staff_ids.includes(CONV_STAFF_ID))
+        return
+    }
 
     /** bỏ qua record của page chat cho page */
     if (conversation.fb_page_id === conversation.fb_client_id) return
@@ -549,6 +706,12 @@ class Main {
     is_count_conversation?: boolean,
     is_pick_first?: boolean,
   ) {
+    is_show_scroll_top.value = false
+
+    // đoạn code này là để tránh trường hợp 2 lần load cùng lúc
+    while (is_loading.value) {
+      await new Promise(resolve => setTimeout(resolve, 50))
+    }
     // nếu có đếm hội thoại thì reset các giá trị
     if (is_count_conversation) {
       conversationStore.count_conversation = {
@@ -583,7 +746,11 @@ class Main {
   /**tự động chọn một khách hàng để hiển thị danh sách tin nhắn */
   selectDefaultConversation(is_pick_first?: boolean) {
     /** nếu ở chế độ lọc chưa đọc thì thôi */
-    if (conversationStore.option_filter_page_data?.unread_message) return
+    if (
+      conversationStore.option_filter_page_data?.unread_message &&
+      map(conversationStore.conversation_list)?.[0]
+    )
+      return
 
     // tự động focus vào input chat
     // đơi nửa giây cho div được render
@@ -664,7 +831,7 @@ class Main {
               const CONVERSATION = r?.conversation?.[data_key]
 
               // nếu không có quyền xem hội thoại thì dừng lại
-              if(!this.isPermissionViewConversation(CONVERSATION)) return cb()
+              if (!this.isPermissionViewConversation(CONVERSATION)) return cb()
 
               conversation = r?.conversation?.[data_key]
               cb()
@@ -719,6 +886,38 @@ class Main {
     )
   }
 
+  /** xử lý cuộn danh sách hội thoại */
+  handleScrollConversation($event: UIEvent) {
+    /** cập nhật trạng thái hiển thị của nút scroll to top */
+    this.updateScrollTopButton($event)
+
+    /**load thêm hội thoại khi lăn chuột xuống cuối */
+    this.loadMoreConversation($event)
+  }
+
+  /** cập nhật trạng thái hiển thị của nút scroll to top */
+  private updateScrollTopButton($event: UIEvent) {
+    /** div đang scroll */
+    const TARGET = $event.target as HTMLDivElement
+
+    /** khoảng cách từ đỉnh scroll với top */
+    const SCROLL_TOP = TARGET?.scrollTop || 0
+
+    /** hiển thị nút scroll to top khi cuộn được trên 120px */
+    is_show_scroll_top.value = SCROLL_TOP > SHOW_SCROLL_TOP_OFFSET
+  }
+
+  /** cuộn danh sách hội thoại lên đầu */
+  scrollToTopConversation() {
+    /** div đang scroll */
+    const SCROLLER = conversation_scroller.value?.$el
+
+    /** không có div scroll thì return */
+    if (!SCROLLER) return
+
+    SCROLLER.scrollTo({ top: 0 })
+  }
+
   /**load thêm hội thoại khi lăn chuột xuống cuối */
   loadMoreConversation($event: UIEvent) {
     /**sẽ scroll khi đã đi được số phần trăm trên độ dài  */
@@ -766,6 +965,9 @@ class Main {
     /**danh sách id page */
     const PAGE_IDS = keys(pageStore.selected_page_id_list)
 
+    // nếu danh sách page rỗng thì không gọi api
+    if (isEmpty(PAGE_IDS)) return
+
     /** id page trên url */
     const PAGE_ID_URL = ($route.query?.p || $route.query?.page_id) as string
     /** id client trên url */
@@ -776,7 +978,7 @@ class Main {
     // nếu page thuộc trang đang chọn thì call api để lấy dữ liệu hội thoại
     if (PAGE_IDS.includes(PAGE_ID_URL)) {
       /** có tìm thấy dữ liệu hội thoại hay không */
-      const IS_HAS_CONVERSATION  = await new Promise((resolve, reject) => {
+      const IS_HAS_CONVERSATION = await new Promise((resolve, reject) => {
         read_conversation(
           {
             page_id: [PAGE_ID_URL],
@@ -786,31 +988,31 @@ class Main {
           (e, r) => {
             /** tắt loading lần đầu */
             conversationStore.is_loading_list = false
-  
+
             // nếu có lỗi
             if (e) reject(e)
-  
+
             /** danh sách các hội thoại */
             let conversations = r?.conversation
-  
+
             /** dữ liệu của hội thoại tìm được */
             const CONVERSATION = r?.conversation?.[DATA_KEY]
-  
+
             // nếu không có quyền xem hội thoại thì dừng lại
-            if(!this.isPermissionViewConversation(CONVERSATION)) {
+            if (!this.isPermissionViewConversation(CONVERSATION)) {
               resolve(false)
               return
             }
-  
+
             /** format dữ liệu trả về */
             conversations = this.formatConversations(conversations)
-  
+
             // thêm vào mảng
             conversationStore.conversation_list = {
               ...conversationStore.conversation_list,
               ...conversations,
             }
-  
+
             // nếu không tìm thấy dữ liệu hội thoại nây thì thôi
             if (!conversations?.[DATA_KEY]) {
               resolve(false)
@@ -874,7 +1076,6 @@ class Main {
 
   /** hàm chọn hội thoại và đẩy id lên param */
   handleSelectAndSetParam(conversation?: ConversationInfo) {
-
     /** chọn hội thoại */
     this.handleSelectConversation(conversation)
 
@@ -882,34 +1083,107 @@ class Main {
     if (!conversation) return
 
     /** đẩy id lên param */
-    setParamChat(
-      $router,
-      conversation.fb_page_id,
-      conversation.fb_client_id,
-    )
+    setParamChat($router, conversation.fb_page_id, conversation.fb_client_id)
   }
 
-  /** hàm sắp xếp conversation */
+  /** hàm sắp xếp lại vị trí của conversation đang được chọn */
   sortConversation() {
-    /** sắp xếp lại object theo last_message_time bằng lodash để tránh lỗi Object.entries */
-    const LIST_ARRAY = map(
-      conversationStore.conversation_list,
-      (value, key) => ({
+    /** hội thoại đang được chọn */
+    const SELECTED_CONVERSATION = conversationStore.select_conversation
+
+    /** key của hội thoại đang được chọn */
+    const SELECTED_KEY =
+      SELECTED_CONVERSATION?.data_key ||
+      (SELECTED_CONVERSATION?.fb_page_id && SELECTED_CONVERSATION?.fb_client_id
+        ? `${SELECTED_CONVERSATION.fb_page_id}_${SELECTED_CONVERSATION.fb_client_id}`
+        : undefined)
+
+    /** nếu không có key thì thôi */
+    if (!SELECTED_KEY) return
+
+    /** danh sách hội thoại hiện tại */
+    const CURRENT_LIST = conversationStore.conversation_list
+
+    /** nếu danh sách rỗng hoặc không tìm thấy hội thoại đang chọn thì thôi */
+    if (!size(CURRENT_LIST) || !CURRENT_LIST[SELECTED_KEY]) return
+    
+    /** cấu hình trang đặc biệt */
+    const SPECIAL_PAGE_CONFIG = this.SERVICE_CALC_SPECIAL_PAGE_CONFIGS.exec()
+
+    /** chuyển object sang array và giữ lại vị trí ban đầu */
+    let original_index = -1
+
+    /** duyệt qua danh sách hội thoại */
+    const LIST_ARRAY = map(CURRENT_LIST, (value, key) => {
+      original_index += 1
+      return {
         key,
         value,
-      }),
+        original_index,
+      }
+    })
+
+    /** tìm vị trí hiện tại của hội thoại đang chọn */
+    const SELECTED_INDEX = LIST_ARRAY.findIndex(item => item.key === SELECTED_KEY)
+    // nếu không tìm thấy hội thoại đang chọn thì thôi
+    if (SELECTED_INDEX === -1) return
+
+    /** item hội thoại đang được chọn */
+    const SELECTED_ITEM = LIST_ARRAY[SELECTED_INDEX]
+
+    /** so sánh 2 conversation */
+    const compareConversation = (
+      first: ConversationInfo,
+      second: ConversationInfo,
+    ) => {
+      // nếu cấu hình trang đặc biệt là UNREAD thì ưu tiên sắp xếp theo số tin nhắn chưa đọc
+      if (SPECIAL_PAGE_CONFIG?.sort_conversation === 'UNREAD') {
+        /** so sánh số tin nhắn chưa đọc */
+        const UNREAD_DIFF =
+          (second.unread_message_amount || 0) -
+          (first.unread_message_amount || 0)
+
+        /** nếu số tin nhắn chưa đọc khác nhau thì trả về kết quả */
+        if (UNREAD_DIFF) return UNREAD_DIFF
+      }
+
+      /** so sánh thời gian last_message */
+      return (second.last_message_time || 0) - (first.last_message_time || 0)
+    }
+
+    /** tạo danh sách hội thoại không chứa hội thoại đang chọn */
+    const LIST_WITHOUT_SELECTED = LIST_ARRAY.filter(
+      item => item.key !== SELECTED_KEY,
     )
 
-    /** sắp xếp mảng */
-    const SORTED_ARRAY = orderBy(
-      LIST_ARRAY,
-      [item => item.value.last_message_time || 0],
-      ['desc'],
-    )
+    /** tìm vị trí của hội thoại đang chọn trong danh sách không chứa nó */
+    const TARGET_INDEX = LIST_WITHOUT_SELECTED.reduce((index, item) => {
+      /** so sánh 2 conversation */
+      const COMPARE_RESULT = compareConversation(
+        item.value,
+        SELECTED_ITEM.value,
+      )
+      /** nếu kết quả nhỏ hơn 0 thì tăng index */
+      if (COMPARE_RESULT < 0) return index + 1
+      /** nếu kết quả bằng 0 và index ban đầu nhỏ hơn thì tăng index */
+      if (
+        COMPARE_RESULT === 0 &&
+        item.original_index < SELECTED_ITEM.original_index
+      )
+        return index + 1
+
+      return index
+    }, 0)
+
+    /** thêm hội thoại đang chọn vào vị trí đã tìm thấy */
+    LIST_WITHOUT_SELECTED.splice(TARGET_INDEX, 0, SELECTED_ITEM)
 
     /** tạo object mới theo thứ tự đã sắp xếp */
     const NEW_LIST: ConversationList = {}
-    SORTED_ARRAY.forEach(item => {
+
+    /** duyệt qua danh sách hội thoại đã sắp xếp */
+    LIST_WITHOUT_SELECTED.forEach(item => {
+      /** thêm hội thoại vào object mới */
       NEW_LIST[item.key] = item.value
     })
 
@@ -957,6 +1231,12 @@ listenerEventBus(
   $main.onRealtimeUpdateConversation.bind($main) as Handler<unknown>,
 )
 
+// lắng nghe sự kiện tải lại danh sách hội thoại mới
+listenerEventBus('reload_conversation_list', async () => {
+  /** load lại danh sách hội thoại */
+  $main.loadConversationFirstTime(true, true, true)
+})
+
 /** khi thay đổi giá trị lọc tin nhắn(trừ field conversation_type) thì load lại dữ liệu */
 watch(
   () => option_filter_page_data.value,
@@ -975,22 +1255,28 @@ watch(
 /** khi có data page được chọn thì tính toán danh sách conversation */
 watch(
   () => pageStore.selected_page_list_info,
-  async () => {
+  async (value, old_val) => {
+    // tránh trường hợp load lại khi không có sự thay đổi gì
+    if (!isEmpty(old_val)) return
     /** load lại danh sách hội thoại */
     await $main.loadConversationFirstTime(false, true)
 
-    // sắp xếp lại danh sách hội thoại để 1 hội thoại đầu hiện ra trước ko bị sai vị trí
+    // sắp xếp lại vị trí của  để 1 hội thoại đầu hiện ra trước ko bị sai vị trí
     // chỉ chạy 1 lần khi mới vào màn hình chat thôi
     $main.sortConversation()
   },
 )
 
-/** khi lần đầu vào app lắng nghe dữ liệu người dùng hiện tại được set thì lấy 1 hội thoại để hiện nhanh ra trước */
+/** khi lần đầu vào app lắng nghe dữ liệu người dùng hiện tại và dữ liệu org được set thì lấy 1 hội thoại để hiện nhanh ra trước */
 watch(
-  () => chatbotUserStore.chatbot_user,
+  () => [chatbotUserStore.chatbot_user, orgStore.selected_org_info],
   async (new_value, old_value) => {
-    // chỉ chạy lần đầu khi lưu dữ liệu vào chatbot_user
-    if (!old_value) return
+    // chỉ chạy 1 lần
+    if (old_value?.[0] && old_value?.[1]) return
+
+    // nếu chưa có dữ liệu thì return
+    if (!new_value[0] || !new_value[1]) return
+
     // call 1 dữ liệu hội thoại để hiện nhanh ra trước
     $main.loadOneConversationBefore()
   },

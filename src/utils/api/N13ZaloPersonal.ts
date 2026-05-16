@@ -5,6 +5,7 @@
 
 import { Botx } from '@/utils/api/Botx'
 import { injectable } from 'tsyringe'
+import type { IGroupMember } from './N4Service/ZaloPersonal'
 
 /** Khai báo group kiểu dữ liệu payload */
 interface ICreateGroupZalo {
@@ -16,13 +17,15 @@ interface ICreateGroupZalo {
   member_ids: string[]
 }
 /** Khai báo group kiểu dữ liệu payload */
-interface IUpdateGroupZalo {
+export interface IUpdateGroupZalo {
   /** Page id */
   page_id: string
   /** Tên group */
   group_id: string
   /** Id của nhân viên */
   member_id: string[]
+  /** danh sách nhân viên */
+  member?: IGroupMember[]
 }
 /** Khai báo group kiểu dữ liệu payload */
 interface IRemoveMemberZalo {

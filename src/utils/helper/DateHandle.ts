@@ -8,11 +8,7 @@ import {
 import { isDate } from 'lodash'
 import { container, singleton } from 'tsyringe'
 import viLocale from 'date-fns/locale/vi'
-import enLocale from 'date-fns/locale/en-US'
 import { Locale, type ILocale } from './Locale'
-
-/** giá trị locale tiếng Việt */
-const LOCALE_VN = 'vn'
 
 /**thời gian đầu vào */
 export type IDateInput = Date | string | number
@@ -47,42 +43,17 @@ export class DateHandle implements IDateHandle {
     private readonly SERVICE_LOCALE: ILocale = container.resolve(Locale)
   ) {}
 
-  /**
-   * lấy locale date-fns tương ứng với locale hiện tại
-   * @returns locale date-fns phù hợp (vi hoặc en-US)
-   */
-  private getDateFnsLocale() {
-    /** locale hiện tại từ cookie */
-    const CURRENT_LOCALE = this.SERVICE_LOCALE.get()
-
-    // nếu là tiếng Việt thì dùng viLocale, ngược lại dùng enLocale
-    return CURRENT_LOCALE === LOCALE_VN ? viLocale : enLocale
-  }
-
-  /**20 phút trước, 2 ngày trước, ... (hỗ trợ đa ngôn ngữ) */
+  /**20 phút trước, 2 ngày trước, ... */
   private genAgoDate(date: Date) {
-    /** locale hiện tại */
-    const CURRENT_LOCALE = this.SERVICE_LOCALE.get()
-
-    /** chuỗi thời gian dạng "x ago" / "x trước" */
-    let result = formatDistanceToNow(date, {
+    return formatDistanceToNow(date, {
       includeSeconds: true,
       addSuffix: true,
-      locale: this.getDateFnsLocale(),
+      locale: viLocale,
     })
-
-    // chỉ clean text khi locale là tiếng Việt vì date-fns/vi trả về chuỗi thừa
-    if (CURRENT_LOCALE === LOCALE_VN) {
-      // loại bỏ từ "khoảng" không cần thiết (vd: "khoảng 5 phút trước" → "5 phút trước")
-      result = result?.replace('khoảng', '')
-      // loại bỏ từ "dưới" không cần thiết (vd: "dưới 1 phút trước" → "1 phút trước")
-      result = result?.replace('dưới', '')
-      // sửa "nữa" thành "trước" cho đúng ngữ cảnh (vd: "5 phút nữa" → "5 phút trước")
-      result = result?.replace('nữa', 'trước')
-    }
-
-    // loại bỏ khoảng trắng thừa
-    return result?.trim()
+      ?.replace('khoảng', '')
+      ?.replace('dưới', '')
+      ?.replace('nữa', 'trước')
+      ?.trim()
   }
   /**chuyển đổi thành đối tượng Date */
   private toDate(date: IDateInput) {
@@ -129,11 +100,17 @@ export class DateHandle implements IDateHandle {
     // nếu không có thời gian thì thôi
     if (!current_date || !next_date) return ''
 
-    // trả về thời gian giữa 2 tin nhắn với locale phù hợp
+    /**locale hiện tại */
+    const LOCALE = this.SERVICE_LOCALE.get()
+
+    // nếu là tiếng việt thì thêm locale
+    if (LOCALE === 'vn') options = { locale: viLocale, ...options }
+
+    // trả về thời gian giữa 2 tin nhắn
     return formatDistanceStrict(
       this.toDate(current_date),
       this.toDate(next_date),
-      { locale: this.getDateFnsLocale(), ...options }
+      options
     )
   }
 }

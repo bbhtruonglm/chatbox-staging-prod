@@ -16,7 +16,6 @@
     <Toggle
       @click.stop
       v-model="model"
-      class_toggle="peer-checked:bg-black"
     />
   </button>
 </template>

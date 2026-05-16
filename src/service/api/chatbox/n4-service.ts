@@ -25,7 +25,7 @@ import type {
   QuerySetAssignStaffConversation,
   QueryToggleLabelConversation,
   QueryToggleSpamConversation,
-  QueryUpdateÌnoConversation,
+  QueryUpdateInfoConversation,
 } from '@/service/interface/app/conversation'
 import { chatbox, chatboxSync } from '@/service/api/chatbox/common'
 
@@ -436,7 +436,7 @@ export const toggle_label_conversation = (
 
 /**cập nhật thông tin khách hàng */
 export const update_info_conversation = (
-  body: QueryUpdateÌnoConversation,
+  body: QueryUpdateInfoConversation,
   proceed: Cb
 ) =>
   chatbox(

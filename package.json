@@ -23,6 +23,7 @@
     "zip": "zip -r dist.zip dist"
   },
   "dependencies": {
+    "@bbhhainx/chat-core": "^0.0.8",
     "@chenfengyuan/vue-qrcode": "^2.0.0",
     "@heroicons/vue": "^2.2.0",
     "@lottiefiles/dotlottie-vue": "^0.7.0",

@@ -13,7 +13,8 @@
   </div>
 </template>
 <script setup lang="ts">
-import { useChatbotUserStore, useOrgStore } from '@/stores'
+import { storeToRefs } from 'pinia'
+import { useChatbotUserStore } from '@/stores'
 import { getPageInfo, getPageName } from '@/service/function'
 
 import ClientAvatar from '@/components/Avatar/ClientAvatar.vue'
@@ -24,39 +25,18 @@ import type { ConversationInfo } from '@/service/interface/app/conversation'
 const $props = withDefaults(
   defineProps<{
     source?: ConversationInfo
+    is_hide_page_avatar?: boolean
   }>(),
   {}
 )
 
 /** user store */
 const chatbotUserStore = useChatbotUserStore()
+const { setting_conversation } = storeToRefs(chatbotUserStore)
 
-/** org store */
-const orgStore = useOrgStore()
-
-/** kiểm soát việc page avatar được hiển thị như thế nào */
+/** kiểm soát hiển thị avatar page */
 function controlPageAvatarVisible() {
-  /** thiết lập tổ chức */
-  const ORG_CONFIG = orgStore.selected_org_info?.org_config
-
-  /** thiết lập cá nhân */
-  const USER_CONFIG = chatbotUserStore.personal_settings
-
-  /**code css ẩn div */
-  const HIDE_CSS = 'hidden group-hover:block'
-
-  /** ưu tiên nếu user có thiết lập cá nhân */
-  if (USER_CONFIG?.is_enable_personal_setting) {
-    /** ẩn avatar page theo thiết lập user */
-    if (USER_CONFIG?.is_hide_page_avatar) return HIDE_CSS
-
-    /** không ẩn theo thiết lập user */
-    return
-  }
-
-  /** nếu tổ chức thiết lập ẩn thì ẩn luôn */
-  if (ORG_CONFIG?.org_is_hide_page_avatar) return HIDE_CSS
-
-  /** không thì thôi */
+  // nếu không hiển thị avatar page thì ẩn
+  if (!setting_conversation.value.is_page_icon) return 'hidden'
 }
 </script>

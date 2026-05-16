@@ -57,7 +57,6 @@
     width="250px"
     height="auto"
     :is_fit="false"
-    :back="150"
     class_content="flex flex-col gap-1"
   >
     <ul class="flex flex-col gap-1 text-sm">

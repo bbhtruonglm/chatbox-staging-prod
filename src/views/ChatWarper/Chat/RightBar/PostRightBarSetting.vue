@@ -14,7 +14,6 @@
           :modelValue="is_enable_hide_comment"
           @click="toggleHideComment()"
           :disabled="true"
-          :class_toggle="'peer-checked:bg-black'"
         />
         {{ $t('Tự động ẩn toàn bộ Bình luận.') }}
       </div>
@@ -23,7 +22,6 @@
           :modelValue="is_auto_comment"
           @click="toggleAutoComment()"
           :disabled="true"
-          :class_toggle="'peer-checked:bg-black'"
         />
         {{ $t('Tự động Bình luận, Nhắn tin ngẫu nhiên hoặc theo cú pháp.') }}
       </div>

@@ -1,6 +1,6 @@
 <template>
   <div class="flex flex-col gap-1 items-center hover:brightness-90">
-    <div class="p-1 rounded-lg bg-slate-200">
+    <div class="p-1 rounded-lg theme-active">
       <component
         :is="icon"
         class="size-5"
